@@ -48,6 +48,10 @@ Tauri v2 desktop app. Two separate processes:
 
 **Capabilities** (`src-tauri/capabilities/default.json`) — controls which Tauri APIs the frontend can use. Add permissions here when using new Tauri plugins.
 
+**Local file serving** — uses a custom `localfile://` URI scheme protocol registered in `lib.rs` via `register_uri_scheme_protocol`. Do NOT use `convertFileSrc` / the Tauri asset protocol; it requires capability scopes and silently fails (images show as broken). Frontend builds URLs as `localfile://localhost${path.split("/").map(encodeURIComponent).join("/")}`.
+
+**RAW file display** — `display_path()` in `lib.rs` extracts embedded JPEGs from RAW formats into `$TMPDIR/see_{hash}.jpg` (cached). RAF uses a custom header parser; DNG/NEF/CR2/ARW/etc. use the EXIF `JPEGInterchangeFormat` tag. JPEG/PNG/HEIC/HEIF are served directly.
+
 **Design reference** (`ui-design-guideline/`) — standalone JSX files (not part of the build) used as visual design specs.
 
 ## TDD workflow
@@ -68,3 +72,5 @@ Rust backend: use `cargo test` inside `src-tauri/`.
 - Vite port is hardcoded to 1420 (`vite.config.ts` + `tauri.conf.json` `devUrl`). Don't change it.
 - App identifier: `viethg.see.app` (used for code signing and app data paths — changing breaks existing installs).
 - `src-tauri/` changes require Rust recompile; frontend changes hot-reload.
+- Tauri dialog commands must use async callback pattern + `spawn_blocking` with mpsc channel — `blocking_pick_folder()` deadlocks on macOS.
+- `scrollTo` is not available in jsdom; use optional chaining (`parent.scrollTo?.(...)`) in Filmstrip to avoid test failures.
