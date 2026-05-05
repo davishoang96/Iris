@@ -1,5 +1,51 @@
+export interface PhotoMeta {
+  path: string;
+  name: string;
+  size: string;
+  width: number;
+  height: number;
+  date: string;
+  camera: string;
+  lens: string;
+  focal: string;
+  aperture: string;
+  shutter: string;
+  iso: number;
+  gps: string;
+  profile: string;
+  rating: number;
+}
+
+export function diskPhotoToPhoto(meta: PhotoMeta, convertSrc: (p: string) => string): Photo {
+  const url = convertSrc(meta.path);
+  const stem = meta.name.replace(/\.[^.]+$/, "");
+  return {
+    id: stem,
+    filename: meta.name,
+    w: meta.width,
+    h: meta.height,
+    size: meta.size,
+    date: meta.date,
+    camera: meta.camera,
+    lens: meta.lens,
+    focal: meta.focal,
+    aperture: meta.aperture,
+    shutter: meta.shutter,
+    iso: meta.iso,
+    title: stem,
+    location: "",
+    gps: meta.gps,
+    profile: meta.profile || "sRGB",
+    rating: meta.rating,
+    full: url,
+    thumb: url,
+    aspect: meta.width && meta.height ? meta.width / meta.height : 1.5,
+  };
+}
+
 export interface Photo {
   id: string;
+  filename: string;
   w: number;
   h: number;
   size: string;
@@ -20,7 +66,7 @@ export interface Photo {
   aspect: number;
 }
 
-interface RawPhoto extends Omit<Photo, "full" | "thumb" | "aspect"> {
+interface RawPhoto extends Omit<Photo, "full" | "thumb" | "aspect" | "filename"> {
   src: string;
 }
 
@@ -52,6 +98,7 @@ const raw: RawPhoto[] = [
 
 export const PHOTOS: Photo[] = raw.map(({ src, ...p }) => ({
   ...p,
+  filename: `${p.id}.RAF`,
   full: u(src, 2000),
   thumb: u(src, 240),
   aspect: p.w / p.h,

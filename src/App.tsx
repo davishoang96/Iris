@@ -1,13 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import "./App.css";
 import { ThemeProvider } from "./theme";
 import { ViewerShell } from "./layout";
-import { PHOTOS } from "./photos";
+import { PHOTOS, type Photo, type PhotoMeta, diskPhotoToPhoto } from "./photos";
 import { Toolbar, type ZoomMode } from "./Toolbar";
 import { Stage, type BgTone } from "./Stage";
 import { Filmstrip } from "./Filmstrip";
 import { MetaBar } from "./MetaBar";
 import { InfoPanel } from "./InfoPanel";
+import { EmptyState } from "./EmptyState";
+
+const isTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+const localFileSrc = (path: string) =>
+  `localfile://localhost${path.split("/").map(encodeURIComponent).join("/")}`;
 
 function Slideshow({ src, onClose }: { src: string; onClose: () => void }) {
   useEffect(() => {
@@ -50,16 +56,43 @@ function Slideshow({ src, onClose }: { src: string; onClose: () => void }) {
 }
 
 function Viewer() {
-  const [index, setIndex]         = useState(0);
-  const [rotation, setRotation]   = useState(0);
-  const [flip, setFlip]           = useState({ h: false, v: false });
-  const [zoomMode, setZoomMode]   = useState<ZoomMode>("fit");
-  const [zoom, setZoom]           = useState(1);
-  const [slideshow, setSlideshow] = useState(false);
-  const [infoOpen, setInfoOpen]   = useState(false);
+  const [folderPath, setFolderPath]   = useState<string | null>(null);
+  const [photos, setPhotos]           = useState<Photo[]>(isTauri ? [] : PHOTOS);
+  const [loading, setLoading]         = useState(false);
+  const [index, setIndex]             = useState(0);
+  const [rotation, setRotation]       = useState(0);
+  const [flip, setFlip]               = useState({ h: false, v: false });
+  const [zoomMode, setZoomMode]       = useState<ZoomMode>("fit");
+  const [zoom, setZoom]               = useState(1);
+  const [slideshow, setSlideshow]     = useState(false);
+  const [infoOpen, setInfoOpen]       = useState(false);
   const [bgTone] = useState<BgTone>("charcoal");
 
-  const photo = PHOTOS[index];
+  const handleOpenFolder = useCallback(async () => {
+    if (!isTauri) return;
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      const path = await invoke<string | null>("open_folder");
+      if (!path) return;
+      setFolderPath(path);
+      setLoading(true);
+      setIndex(0);
+      try {
+        const metas = await invoke<PhotoMeta[]>("list_images", { folder: path });
+        setPhotos(metas.map((m) => diskPhotoToPhoto(m, localFileSrc)));
+      } catch (err) {
+        console.error("list_images failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("open_folder failed:", err);
+    }
+  }, []);
+
+  const folderLabel = folderPath
+    ? folderPath.split(/[\\/]/).filter(Boolean).pop() ?? folderPath
+    : "Iceland & Faroes";
 
   useEffect(() => {
     setRotation(0);
@@ -68,7 +101,7 @@ function Viewer() {
   }, [index]);
 
   const navigate = (delta: number) =>
-    setIndex((i) => (i + delta + PHOTOS.length) % PHOTOS.length);
+    setIndex((i) => (i + delta + photos.length) % photos.length);
 
   const nudgeZoom = (delta: number) =>
     setZoom((z) => Math.min(4, Math.max(0.2, +(z + delta).toFixed(2))));
@@ -88,7 +121,18 @@ function Viewer() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [slideshow]);
+  }, [slideshow, photos.length]);
+
+  if (photos.length === 0) {
+    return (
+      <EmptyState
+        onOpenFolder={isTauri ? handleOpenFolder : () => {}}
+        loading={loading}
+      />
+    );
+  }
+
+  const photo = photos[index];
 
   return (
     <>
@@ -97,7 +141,9 @@ function Viewer() {
           <Toolbar
             photo={photo}
             index={index}
-            total={PHOTOS.length}
+            total={photos.length}
+            folderLabel={folderLabel}
+            onOpenFolder={isTauri ? handleOpenFolder : undefined}
             onPrev={() => navigate(-1)}
             onNext={() => navigate(+1)}
             onRotate={(d) => setRotation((r) => r + d)}
@@ -125,12 +171,12 @@ function Viewer() {
         }
         filmstrip={
           <Filmstrip
-            photos={PHOTOS}
+            photos={photos}
             index={index}
             onSelect={(i) => setIndex(i)}
           />
         }
-        metabar={<MetaBar photo={photo} total={PHOTOS.length} />}
+        metabar={<MetaBar photo={photo} total={photos.length} />}
         infoPanel={infoOpen ? <InfoPanel photo={photo} /> : undefined}
       />
       {slideshow && (

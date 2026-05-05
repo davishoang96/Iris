@@ -59,14 +59,14 @@ Design spec: `ui-design-guideline/See.html`
 ## Phase 4: Real Files via Tauri Backend
 *Replace mock data with actual local photos*
 
-- [ ] Rust: `open_folder` command — native folder picker dialog
-- [ ] Rust: `list_images` command — scan dir for JPEG / PNG / RAF / HEIC, return file metadata
-- [ ] Rust: `read_exif` command — parse EXIF using `kamadak-exif` crate, return structured metadata
-- [ ] Frontend: load `file://` URLs via Tauri asset protocol for thumbnails + full images
-- [ ] Replace hardcoded `PHOTOS` array with state loaded from disk
-- [ ] Empty state screen when no folder selected
+- [x] Rust: `open_folder` command — native folder picker dialog
+- [x] Rust: `list_images` command — scan dir for JPEG / PNG / RAF / HEIC / DNG / NEF / CR2 / ARW, return file metadata + EXIF
+- [x] Rust: EXIF parsed inline in `list_images` via `kamadak-exif` (camera, lens, focal, aperture, shutter, ISO, date, dimensions)
+- [x] Frontend: load local files via `convertFileSrc` (Tauri asset protocol)
+- [x] Replace hardcoded `PHOTOS` array with state loaded from disk
+- [x] Empty state screen when no folder selected
 
-**Gate:** App works on real photos from disk — folder open → browse → EXIF displayed.
+**Gate:** App works on real photos from disk — folder open → browse → EXIF displayed. ✅
 
 ---
 
@@ -77,4 +77,4 @@ Design spec: `ui-design-guideline/See.html`
 | 1 — Foundation | ✅ Done |
 | 2 — Core Viewer | ✅ Done |
 | 3 — Info Panel | ✅ Done |
-| 4 — Real Files | Not started |
+| 4 — Real Files | ✅ Done |

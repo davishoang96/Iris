@@ -202,7 +202,7 @@ export function InfoPanel({ photo }: InfoPanelProps) {
 
       <div style={{ height: 14 }} />
       <SectionLabel>File</SectionLabel>
-      <Row label="Filename"   value={`${photo.id}.RAF`} />
+      <Row label="Filename"   value={photo.filename} />
       <Row label="Dimensions" value={`${photo.w} × ${photo.h}`} />
       <Row label="Size"       value={photo.size} />
       <Row label="Captured"   value={photo.date} mono={false} />

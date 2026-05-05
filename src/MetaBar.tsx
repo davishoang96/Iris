@@ -1,4 +1,3 @@
-import React from "react";
 import type { Photo } from "./photos";
 import { IconStar } from "./icons";
 
@@ -46,7 +45,7 @@ export function MetaBar({ photo, total }: MetaBarProps) {
         borderTop: "1px solid var(--hairline)",
       }}
     >
-      <Cell label="File"       value={`${photo.id}.RAF`} mono />
+      <Cell label="File"       value={photo.filename} mono />
       <Cell label="Resolution" value={`${photo.w} × ${photo.h}`} mono />
       <Cell label="Size"       value={photo.size} mono />
       <Cell label="Captured"   value={photo.date} />

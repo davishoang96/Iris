@@ -14,6 +14,8 @@ interface ToolbarProps {
   photo: Photo;
   index: number;
   total: number;
+  folderLabel?: string;
+  onOpenFolder?: () => void;
   onPrev: () => void;
   onNext: () => void;
   onRotate: (deg: number) => void;
@@ -90,6 +92,8 @@ function Divider() {
 
 export function Toolbar({
   photo, index, total,
+  folderLabel = "Iceland & Faroes",
+  onOpenFolder,
   onPrev, onNext,
   onRotate, onFlipH, onFlipV,
   zoom, onZoomIn, onZoomOut, zoomMode, setZoomMode,
@@ -110,17 +114,22 @@ export function Toolbar({
     >
       {/* Left */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        <div
+        <button
+          onClick={onOpenFolder}
+          title="Open folder"
           style={{
+            ...btnBase,
             display: "flex", alignItems: "center", gap: 6,
             color: "var(--ink-2)", fontSize: 12.5, minWidth: 0,
+            padding: "0 6px",
+            cursor: onOpenFolder ? "pointer" : "default",
           }}
         >
           <IconFolder size={15} />
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            Pictures · 2025 · <span style={{ color: "var(--ink)", fontWeight: 500 }}>Iceland &amp; Faroes</span>
+            <span style={{ color: "var(--ink)", fontWeight: 500 }}>{folderLabel}</span>
           </span>
-        </div>
+        </button>
         <Divider />
         <div style={{ display: "flex", alignItems: "center" }}>
           <TBButton
@@ -163,7 +172,7 @@ export function Toolbar({
             fontFamily: "var(--mono)", letterSpacing: 0,
           }}
         >
-          {photo.id}.RAF
+          {photo.filename}
         </div>
       </div>
 
