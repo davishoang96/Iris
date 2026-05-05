@@ -1,188 +1,147 @@
+import { useState, useEffect } from "react";
 import "./App.css";
-import { ThemeProvider, useTheme, type Theme } from "./theme";
+import { ThemeProvider } from "./theme";
 import { ViewerShell } from "./layout";
-import {
-  IconFolder, IconChevron, IconRotateLeft, IconRotateRight,
-  IconFlipH, IconFlipV, IconCrop, IconStraighten,
-  IconZoomOut, IconZoomIn, IconFit, IconOneToOne, IconFill,
-  IconSlideshow, IconShare, IconInfo,
-} from "./icons";
+import { PHOTOS } from "./photos";
+import { Toolbar, type ZoomMode } from "./Toolbar";
+import { Stage, type BgTone } from "./Stage";
+import { Filmstrip } from "./Filmstrip";
+import { MetaBar } from "./MetaBar";
 
-/* ── Placeholder chrome ─────────────────────────────────────────────────────── */
-
-function PlaceholderToolbar() {
-  const { theme, setTheme } = useTheme();
-  const themes: Theme[] = ["light", "dim", "dark"];
+function Slideshow({ src, onClose }: { src: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
-    <header style={{
-      display: "grid",
-      gridTemplateColumns: "1fr auto 1fr",
-      alignItems: "center",
-      padding: "10px 14px",
-      borderBottom: "1px solid var(--hairline)",
-      background: "var(--surface)",
-      backdropFilter: "saturate(180%) blur(20px)",
-      WebkitBackdropFilter: "saturate(180%) blur(20px)",
-    }}>
-      {/* Left */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--ink-2)", fontSize: 12.5 }}>
-          <IconFolder size={15} />
-          <span>Pictures · 2025 · <strong style={{ color: "var(--ink)" }}>Iceland & Faroes</strong></span>
-        </div>
-        <div style={{ width: 1, height: 16, background: "var(--hairline-strong)" }} />
-        <button style={tbBtn}>
-          <IconChevron size={17} style={{ transform: "rotate(180deg)" }} />
-        </button>
-        <button style={tbBtn}>
-          <IconChevron size={17} />
-        </button>
-        <span style={{ fontSize: 12.5, color: "var(--ink-3)", fontVariantNumeric: "tabular-nums" }}>
-          1 / 20
-        </span>
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "#000",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        zIndex: 99, cursor: "pointer",
+      }}
+    >
+      <img
+        src={src}
+        alt=""
+        style={{
+          maxWidth: "94vw", maxHeight: "94vh",
+          objectFit: "contain",
+          boxShadow: "0 40px 100px -20px #000",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute", bottom: 28, left: 0, right: 0,
+          textAlign: "center", color: "#aaa",
+          fontSize: 12, fontFamily: "var(--mono)",
+        }}
+      >
+        click anywhere or press Esc to exit
       </div>
-
-      {/* Center */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em" }}>Reynisfjara at dawn</div>
-        <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "var(--mono)" }}>DSCF1042.RAF</div>
-      </div>
-
-      {/* Right */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0 }}>
-        <button style={tbBtn}><IconRotateLeft size={17} /></button>
-        <button style={tbBtn}><IconRotateRight size={17} /></button>
-        <button style={tbBtn}><IconFlipH size={17} /></button>
-        <button style={tbBtn}><IconFlipV size={17} /></button>
-        <Divider />
-        <button style={tbBtn}><IconCrop size={17} /></button>
-        <button style={tbBtn}><IconStraighten size={17} /></button>
-        <Divider />
-        <button style={tbBtn}><IconZoomOut size={17} /></button>
-        <span style={{ fontSize: 11.5, color: "var(--ink-2)", fontFamily: "var(--mono)", minWidth: 44, textAlign: "center" }}>100%</span>
-        <button style={tbBtn}><IconZoomIn size={17} /></button>
-        <button style={tbBtn}><IconFit size={17} /></button>
-        <button style={tbBtn}><IconOneToOne size={17} /></button>
-        <button style={tbBtn}><IconFill size={17} /></button>
-        <Divider />
-        <button style={tbBtn}><IconSlideshow size={17} /></button>
-        <button style={tbBtn}><IconShare size={17} /></button>
-        <button style={tbBtn}><IconInfo size={17} /></button>
-        <Divider />
-        {/* Theme switcher */}
-        <div style={{ display: "flex", gap: 4, marginLeft: 6 }}>
-          {themes.map(t => (
-            <button
-              key={t}
-              onClick={() => setTheme(t)}
-              style={{
-                ...tbBtn,
-                fontSize: 10,
-                fontWeight: theme === t ? 700 : 400,
-                background: theme === t ? "var(--hairline-strong)" : "transparent",
-                borderRadius: 6,
-                padding: "0 8px",
-              }}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function PlaceholderStage() {
-  return (
-    <div style={{
-      gridArea: "stage",
-      background: "var(--canvas)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "var(--ink-3)",
-      fontFamily: "var(--mono)",
-      fontSize: 12,
-    }}>
-      stage — photo canvas
     </div>
   );
 }
 
-function PlaceholderFilmstrip() {
+function Viewer() {
+  const [index, setIndex]         = useState(0);
+  const [rotation, setRotation]   = useState(0);
+  const [flip, setFlip]           = useState({ h: false, v: false });
+  const [zoomMode, setZoomMode]   = useState<ZoomMode>("fit");
+  const [zoom, setZoom]           = useState(1);
+  const [slideshow, setSlideshow] = useState(false);
+  const [infoOpen, setInfoOpen]   = useState(false);
+  const [bgTone] = useState<BgTone>("charcoal");
+
+  const photo = PHOTOS[index];
+
+  useEffect(() => {
+    setRotation(0);
+    setFlip({ h: false, v: false });
+    setZoom(1);
+  }, [index]);
+
+  const navigate = (delta: number) =>
+    setIndex((i) => (i + delta + PHOTOS.length) % PHOTOS.length);
+
+  const nudgeZoom = (delta: number) =>
+    setZoom((z) => Math.min(4, Math.max(0.2, +(z + delta).toFixed(2))));
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (slideshow) return;
+      switch (e.key) {
+        case "ArrowLeft":  navigate(-1); break;
+        case "ArrowRight": navigate(+1); break;
+        case "+": case "=": nudgeZoom(+0.1); break;
+        case "-": nudgeZoom(-0.1); break;
+        case "f": case "F": setZoomMode("fit"); setZoom(1); break;
+        case "1": setZoomMode("100"); setZoom(1); break;
+        case "i": case "I": setInfoOpen((v) => !v); break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [slideshow]);
+
   return (
-    <div style={{
-      gridArea: "strip",
-      borderTop: "1px solid var(--hairline)",
-      borderBottom: "1px solid var(--hairline)",
-      background: "var(--surface)",
-      padding: "10px 14px",
-      display: "flex",
-      gap: 4,
-      alignItems: "center",
-      color: "var(--ink-3)",
-      fontFamily: "var(--mono)",
-      fontSize: 11,
-    }}>
-      {Array.from({ length: 20 }, (_, i) => (
-        <div key={i} style={{
-          width: 64, height: 64, borderRadius: 4, flexShrink: 0,
-          background: "var(--hairline-strong)",
-          border: i === 0 ? "2px solid var(--ink)" : "1px solid var(--hairline-strong)",
-        }} />
-      ))}
-    </div>
+    <>
+      <ViewerShell
+        toolbar={
+          <Toolbar
+            photo={photo}
+            index={index}
+            total={PHOTOS.length}
+            onPrev={() => navigate(-1)}
+            onNext={() => navigate(+1)}
+            onRotate={(d) => setRotation((r) => r + d)}
+            onFlipH={() => setFlip((f) => ({ ...f, h: !f.h }))}
+            onFlipV={() => setFlip((f) => ({ ...f, v: !f.v }))}
+            zoom={zoom}
+            onZoomIn={() => nudgeZoom(+0.1)}
+            onZoomOut={() => nudgeZoom(-0.1)}
+            zoomMode={zoomMode}
+            setZoomMode={(m) => { setZoomMode(m); setZoom(1); }}
+            onSlideshow={() => setSlideshow(true)}
+            infoOpen={infoOpen}
+            onToggleInfo={() => setInfoOpen((v) => !v)}
+          />
+        }
+        stage={
+          <Stage
+            photo={photo}
+            rotation={rotation}
+            flip={flip}
+            zoom={zoom}
+            zoomMode={zoomMode}
+            bgTone={bgTone}
+          />
+        }
+        filmstrip={
+          <Filmstrip
+            photos={PHOTOS}
+            index={index}
+            onSelect={(i) => setIndex(i)}
+          />
+        }
+        metabar={<MetaBar photo={photo} total={PHOTOS.length} />}
+      />
+      {slideshow && (
+        <Slideshow src={photo.full} onClose={() => setSlideshow(false)} />
+      )}
+    </>
   );
 }
-
-function PlaceholderMetaBar() {
-  return (
-    <footer style={{
-      gridArea: "bottom",
-      display: "flex",
-      alignItems: "center",
-      gap: 28,
-      padding: "10px 18px",
-      background: "var(--surface)",
-      borderTop: "1px solid var(--hairline)",
-      fontSize: 12,
-      color: "var(--ink-3)",
-      fontFamily: "var(--mono)",
-    }}>
-      <span>DSCF1042.RAF</span>
-      <span>6000 × 4000</span>
-      <span>12.4 MB</span>
-      <span style={{ fontFamily: "var(--sans)" }}>Jul 18, 2025 · 06:42</span>
-    </footer>
-  );
-}
-
-/* ── Helpers ────────────────────────────────────────────────────────────────── */
-
-const tbBtn: React.CSSProperties = {
-  height: 32, minWidth: 32, padding: "0 8px",
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-  background: "transparent", border: 0, borderRadius: 8,
-  color: "var(--ink)", cursor: "pointer",
-};
-
-function Divider() {
-  return <div style={{ width: 1, height: 18, background: "var(--hairline-strong)", margin: "0 6px" }} />;
-}
-
-/* ── Root ───────────────────────────────────────────────────────────────────── */
 
 export default function App() {
   return (
-    <ThemeProvider initial="light">
-      <ViewerShell
-        toolbar={<PlaceholderToolbar />}
-        stage={<PlaceholderStage />}
-        filmstrip={<PlaceholderFilmstrip />}
-        metabar={<PlaceholderMetaBar />}
-      />
+    <ThemeProvider initial="dark">
+      <Viewer />
     </ThemeProvider>
   );
 }

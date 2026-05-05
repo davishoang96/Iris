@@ -21,22 +21,22 @@ Design spec: `ui-design-guideline/See.html`
 ## Phase 2: Core Viewer (mock data)
 *Toolbar + Stage + Filmstrip + MetaBar*
 
-- [ ] `Photo` TypeScript type (id, w, h, camera, lens, focal, aperture, shutter, iso, title, location, gps, rating, full, thumb, aspect, size, date, profile)
-- [ ] Mock photo data — port 20 Iceland / Faroe Islands photos from `ui-design-guideline/photos.jsx`
-- [ ] `Toolbar` component — 3-column layout:
+- [x] `Photo` TypeScript type (id, w, h, camera, lens, focal, aperture, shutter, iso, title, location, gps, rating, full, thumb, aspect, size, date, profile)
+- [x] Mock photo data — port 20 Iceland / Faroe Islands photos from `ui-design-guideline/photos.jsx`
+- [x] `Toolbar` component — 3-column layout:
   - Left: folder breadcrumb, prev/next buttons, photo counter
   - Center: photo title + filename
   - Right: rotate L/R, flip H/V, crop, straighten, zoom −/+/%, fit/1:1/fill, slideshow, share, info toggle
-- [ ] `Stage` component — photo canvas with:
+- [x] `Stage` component — photo canvas with:
   - Zoom modes: fit / fill / 1:1
   - Rotation (90° steps), flip H/V transforms
   - Backdrop tones: charcoal / black / paper / checker
   - Resolution overlay (top-right corner)
-- [ ] `Filmstrip` component — horizontal scroll, 64×64 thumbs, selected lift + outline, rating dot (⭐5), sequence numbers
-- [ ] `MetaBar` component — bottom bar: File / Resolution / Size / Captured / star rating / count
-- [ ] Keyboard shortcuts: `←` `→` navigate · `+` `-` zoom · `F` fit · `1` 1:1 · `I` info · `Esc` slideshow exit
+- [x] `Filmstrip` component — horizontal scroll, 64×64 thumbs, selected lift + outline, rating dot (⭐5), sequence numbers
+- [x] `MetaBar` component — bottom bar: File / Resolution / Size / Captured / star rating / count
+- [x] Keyboard shortcuts: `←` `→` navigate · `+` `-` zoom · `F` fit · `1` 1:1 · `I` info · `Esc` slideshow exit
 
-**Gate:** Fully navigable viewer, all UI chrome rendered, mock Unsplash photos loading.
+**Gate:** Fully navigable viewer, all UI chrome rendered, mock Unsplash photos loading. ✅
 
 ---
 
@@ -75,6 +75,6 @@ Design spec: `ui-design-guideline/See.html`
 | Phase | Status |
 |-------|--------|
 | 1 — Foundation | ✅ Done |
-| 2 — Core Viewer | Not started |
+| 2 — Core Viewer | ✅ Done |
 | 3 — Info Panel | Not started |
 | 4 — Real Files | Not started |
