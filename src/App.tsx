@@ -7,6 +7,7 @@ import { Toolbar, type ZoomMode } from "./Toolbar";
 import { Stage, type BgTone } from "./Stage";
 import { Filmstrip } from "./Filmstrip";
 import { MetaBar } from "./MetaBar";
+import { InfoPanel } from "./InfoPanel";
 
 function Slideshow({ src, onClose }: { src: string; onClose: () => void }) {
   useEffect(() => {
@@ -130,6 +131,7 @@ function Viewer() {
           />
         }
         metabar={<MetaBar photo={photo} total={PHOTOS.length} />}
+        infoPanel={infoOpen ? <InfoPanel photo={photo} /> : undefined}
       />
       {slideshow && (
         <Slideshow src={photo.full} onClose={() => setSlideshow(false)} />

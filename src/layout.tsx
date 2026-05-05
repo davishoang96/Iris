@@ -29,7 +29,11 @@ export function ViewerShell({ toolbar, stage, filmstrip, metabar, infoPanel }: V
       <div style={{ gridArea: "stage" }}>{stage}</div>
       <div style={{ gridArea: "strip" }}>{filmstrip}</div>
       <div style={{ gridArea: "bottom" }}>{metabar}</div>
-      {hasPanel && <div style={{ gridArea: "panel" }}>{infoPanel}</div>}
+      {hasPanel && (
+        <div style={{ gridArea: "panel", overflow: "hidden", minHeight: 0 }}>
+          {infoPanel}
+        </div>
+      )}
     </div>
   );
 }

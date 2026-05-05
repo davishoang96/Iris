@@ -43,16 +43,16 @@ Design spec: `ui-design-guideline/See.html`
 ## Phase 3: Info Panel + Slideshow
 *Right panel (320px) + full-screen slideshow overlay*
 
-- [ ] Collapsible right panel — animated via `grid-template-columns` transition (0.25s)
-- [ ] `InfoPanel` component:
+- [x] Collapsible right panel — animated via `grid-template-columns` transition (0.25s)
+- [x] `InfoPanel` component:
   - Header: title + location
   - Histogram (deterministic SVG seeded from photo id)
   - Camera section: camera / lens / focal / aperture / shutter / ISO
   - File section: filename / dimensions / size / captured / color profile
   - Location section: GPS coords + abstract MiniMap
-- [ ] `Slideshow` overlay — fullscreen black bg, click or `Esc` to exit
+- [x] `Slideshow` overlay — fullscreen black bg, click or `Esc` to exit
 
-**Gate:** Complete pixel-faithful implementation of `See.html` prototype. All interactions working.
+**Gate:** Complete pixel-faithful implementation of `See.html` prototype. All interactions working. ✅
 
 ---
 
@@ -76,5 +76,5 @@ Design spec: `ui-design-guideline/See.html`
 |-------|--------|
 | 1 — Foundation | ✅ Done |
 | 2 — Core Viewer | ✅ Done |
-| 3 — Info Panel | Not started |
+| 3 — Info Panel | ✅ Done |
 | 4 — Real Files | Not started |
