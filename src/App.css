@@ -1,0 +1,65 @@
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --bg: #f6f5f2;
+  --surface: #ffffffcc;
+  --surface-solid: #ffffff;
+  --hairline: #00000014;
+  --hairline-strong: #00000022;
+  --ink: #15141a;
+  --ink-2: #5a5963;
+  --ink-3: #8b8a93;
+  --accent: #1a73ff;
+  --shadow: 0 1px 0 #00000008, 0 12px 32px -16px #0000002a;
+  --canvas: #1a1a1c;
+  --thumb-radius: 6px;
+  --chrome-radius: 14px;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Inter Tight", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html[data-theme="dim"] {
+  --bg: #1f1f22;
+  --surface: #2a2a2ecc;
+  --surface-solid: #2a2a2e;
+  --hairline: #ffffff14;
+  --hairline-strong: #ffffff22;
+  --ink: #f1f0ec;
+  --ink-2: #b6b5b0;
+  --ink-3: #797881;
+  --canvas: #111113;
+  --shadow: 0 1px 0 #ffffff06, 0 12px 32px -16px #00000080;
+}
+
+html[data-theme="dark"] {
+  --bg: #0c0c0e;
+  --surface: #15151acc;
+  --surface-solid: #15151a;
+  --hairline: #ffffff10;
+  --hairline-strong: #ffffff1c;
+  --ink: #f1f0ec;
+  --ink-2: #9d9ca5;
+  --ink-3: #6a6973;
+  --canvas: #050507;
+  --shadow: 0 1px 0 #ffffff06, 0 18px 40px -20px #000000;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+}
+
+button { font: inherit; color: inherit; }
+
+#root { height: 100vh; }

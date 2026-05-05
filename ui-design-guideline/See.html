@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>See — Photo Viewer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --surface: #ffffffcc;
+      --surface-solid: #ffffff;
+      --hairline: #00000014;
+      --hairline-strong: #00000022;
+      --ink: #15141a;
+      --ink-2: #5a5963;
+      --ink-3: #8b8a93;
+      --accent: #1a73ff;
+      --shadow: 0 1px 0 #00000008, 0 12px 32px -16px #0000002a;
+      --canvas: #1a1a1c;
+      --thumb-radius: 6px;
+      --chrome-radius: 14px;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --sans: "Inter Tight", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    html[data-theme="dim"] {
+      --bg: #1f1f22;
+      --surface: #2a2a2ecc;
+      --surface-solid: #2a2a2e;
+      --hairline: #ffffff14;
+      --hairline-strong: #ffffff22;
+      --ink: #f1f0ec;
+      --ink-2: #b6b5b0;
+      --ink-3: #797881;
+      --canvas: #111113;
+      --shadow: 0 1px 0 #ffffff06, 0 12px 32px -16px #00000080;
+    }
+    html[data-theme="dark"] {
+      --bg: #0c0c0e;
+      --surface: #15151acc;
+      --surface-solid: #15151a;
+      --hairline: #ffffff10;
+      --hairline-strong: #ffffff1c;
+      --ink: #f1f0ec;
+      --ink-2: #9d9ca5;
+      --ink-3: #6a6973;
+      --canvas: #050507;
+      --shadow: 0 1px 0 #ffffff06, 0 18px 40px -20px #000000;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--sans);
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.005em;
+      overflow: hidden;
+    }
+    button { font: inherit; color: inherit; }
+    #app { height: 100vh; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="text/babel" data-presets="react">
+
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;width:100%;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-noncommentable=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">{children}</div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+function TweakColor({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <input type="color" className="twk-swatch" value={value}
+             onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+
+
+// Curated photo set — Iceland / Faroe Islands trip, July 2025.
+// Using Unsplash source IDs with their hot-link CDN.
+const u = (id, w = 2000) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
+
+const PHOTOS = [
+  { id: "DSCF1042", src: "1506905925346-21bda4d32df4", w: 6000, h: 4000, size: "12.4 MB", date: "Jul 18, 2025  ·  06:42",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "23mm", aperture: "f/8.0", shutter: "1/250s", iso: 200,
+    title: "Reynisfjara at dawn", location: "Vík í Mýrdal, Iceland",
+    gps: "63.4060° N, 19.0451° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1043", src: "1531366936337-7c912a4589a7", w: 6000, h: 4000, size: "10.8 MB", date: "Jul 18, 2025  ·  07:12",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "55mm", aperture: "f/5.6", shutter: "1/500s", iso: 200,
+    title: "Basalt columns", location: "Reynisfjara, Iceland",
+    gps: "63.4060° N, 19.0451° W", profile: "Display P3", rating: 4 },
+  { id: "DSCF1044", src: "1500534314209-a25ddb2bd429", w: 6000, h: 4000, size: "11.2 MB", date: "Jul 18, 2025  ·  09:03",
+    camera: "FUJIFILM X-T5", lens: "XF 23mm f/1.4 R LM WR", focal: "23mm", aperture: "f/2.8", shutter: "1/1000s", iso: 160,
+    title: "Glacial outwash", location: "Sólheimasandur, Iceland",
+    gps: "63.4914° N, 19.3641° W", profile: "Display P3", rating: 3 },
+  { id: "DSCF1045", src: "1464822759023-fed622ff2c3b", w: 6000, h: 4000, size: "13.9 MB", date: "Jul 18, 2025  ·  11:21",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "16mm", aperture: "f/11", shutter: "1/320s", iso: 125,
+    title: "Skógafoss mist", location: "Skógar, Iceland",
+    gps: "63.5320° N, 19.5114° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1046", src: "1483728642387-6c3bdd6c93e5", w: 6000, h: 4000, size: "9.7 MB", date: "Jul 18, 2025  ·  14:48",
+    camera: "FUJIFILM X-T5", lens: "XF 23mm f/1.4 R LM WR", focal: "23mm", aperture: "f/4.0", shutter: "1/800s", iso: 160,
+    title: "Moss field", location: "Eldhraun lava field",
+    gps: "63.7833° N, 18.0833° W", profile: "Display P3", rating: 4 },
+  { id: "DSCF1047", src: "1418065460487-3e41a6c84dc5", w: 6000, h: 4000, size: "14.6 MB", date: "Jul 18, 2025  ·  16:02",
+    camera: "FUJIFILM X-T5", lens: "XF 70-300mm f/4-5.6", focal: "180mm", aperture: "f/8.0", shutter: "1/640s", iso: 200,
+    title: "Highland ridge", location: "Landmannalaugar, Iceland",
+    gps: "63.9930° N, 19.0667° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1048", src: "1469854523086-cc02fe5d8800", w: 6000, h: 4000, size: "11.8 MB", date: "Jul 18, 2025  ·  18:55",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "35mm", aperture: "f/5.6", shutter: "1/400s", iso: 200,
+    title: "Golden hour fjord", location: "Seyðisfjörður, Iceland",
+    gps: "65.2627° N, 13.9942° W", profile: "Display P3", rating: 4 },
+  { id: "DSCF1049", src: "1441974231531-c6227db76b6e", w: 6000, h: 4000, size: "10.2 MB", date: "Jul 18, 2025  ·  19:14",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "16mm", aperture: "f/8.0", shutter: "1/250s", iso: 200,
+    title: "Pine cathedral", location: "Hallormsstaður Forest",
+    gps: "65.0833° N, 14.7333° W", profile: "Display P3", rating: 3 },
+  { id: "DSCF1050", src: "1454496522488-7a8e488e8606", w: 6000, h: 4000, size: "12.0 MB", date: "Jul 19, 2025  ·  05:38",
+    camera: "FUJIFILM X-T5", lens: "XF 70-300mm f/4-5.6", focal: "300mm", aperture: "f/6.4", shutter: "1/1000s", iso: 400,
+    title: "Mountain lake", location: "Þórsmörk, Iceland",
+    gps: "63.6833° N, 19.4833° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1051", src: "1470770841072-f978cf4d019e", w: 6000, h: 4000, size: "11.4 MB", date: "Jul 19, 2025  ·  08:21",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "24mm", aperture: "f/8.0", shutter: "1/500s", iso: 160,
+    title: "Cabin and the lake", location: "Kirkjufell, Iceland",
+    gps: "64.9417° N, 23.3072° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1052", src: "1418985991508-e47386d96a71", w: 6000, h: 4000, size: "13.1 MB", date: "Jul 19, 2025  ·  10:47",
+    camera: "FUJIFILM X-T5", lens: "XF 23mm f/1.4 R LM WR", focal: "23mm", aperture: "f/2.0", shutter: "1/1250s", iso: 125,
+    title: "Coastal cliff", location: "Látrabjarg, Iceland",
+    gps: "65.5028° N, 24.5328° W", profile: "Display P3", rating: 4 },
+  { id: "DSCF1053", src: "1444090542259-0af8fa96557e", w: 6000, h: 4000, size: "9.4 MB", date: "Jul 19, 2025  ·  12:33",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "55mm", aperture: "f/4.0", shutter: "1/640s", iso: 200,
+    title: "Wildflowers", location: "Westfjords, Iceland",
+    gps: "65.9833° N, 22.5333° W", profile: "Display P3", rating: 3 },
+  { id: "DSCF1054", src: "1501785888041-af3ef285b470", w: 6000, h: 4000, size: "12.8 MB", date: "Jul 19, 2025  ·  14:18",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "16mm", aperture: "f/11", shutter: "1/320s", iso: 200,
+    title: "Hallsanef", location: "Faroe Islands",
+    gps: "62.0000° N, 6.7833° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1055", src: "1493246507139-91e8fad9978e", w: 6000, h: 4000, size: "10.6 MB", date: "Jul 19, 2025  ·  17:02",
+    camera: "FUJIFILM X-T5", lens: "XF 70-300mm f/4-5.6", focal: "210mm", aperture: "f/5.6", shutter: "1/800s", iso: 320,
+    title: "Distant ridges", location: "Streymoy, Faroe Islands",
+    gps: "62.1167° N, 7.0500° W", profile: "Display P3", rating: 4 },
+  { id: "DSCF1056", src: "1470770903676-69b98201ea1c", w: 6000, h: 4000, size: "11.9 MB", date: "Jul 19, 2025  ·  19:48",
+    camera: "FUJIFILM X-T5", lens: "XF 23mm f/1.4 R LM WR", focal: "23mm", aperture: "f/4.0", shutter: "1/500s", iso: 200,
+    title: "Lake at dusk", location: "Sørvágsvatn, Faroe Islands",
+    gps: "62.0833° N, 7.2833° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1057", src: "1431794062232-2a99a5431c6c", w: 6000, h: 4000, size: "13.4 MB", date: "Jul 20, 2025  ·  06:13",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "35mm", aperture: "f/5.6", shutter: "1/400s", iso: 160,
+    title: "Sea stacks", location: "Drangarnir, Faroe Islands",
+    gps: "62.0667° N, 7.3333° W", profile: "Display P3", rating: 5 },
+  { id: "DSCF1058", src: "1502082553048-f009c37129b9", w: 6000, h: 4000, size: "10.1 MB", date: "Jul 20, 2025  ·  08:55",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "16mm", aperture: "f/8.0", shutter: "1/640s", iso: 200,
+    title: "Birch grove", location: "Þingvellir, Iceland",
+    gps: "64.2559° N, 21.1297° W", profile: "Display P3", rating: 3 },
+  { id: "DSCF1059", src: "1500964757637-c85e8a162699", w: 6000, h: 4000, size: "12.5 MB", date: "Jul 20, 2025  ·  11:30",
+    camera: "FUJIFILM X-T5", lens: "XF 70-300mm f/4-5.6", focal: "100mm", aperture: "f/5.6", shutter: "1/800s", iso: 200,
+    title: "River bend", location: "Skaftafell, Iceland",
+    gps: "64.0167° N, 16.9667° W", profile: "Display P3", rating: 4 },
+  { id: "DSCF1060", src: "1505873242700-f289a29e1e0f", w: 6000, h: 4000, size: "11.0 MB", date: "Jul 20, 2025  ·  14:08",
+    camera: "FUJIFILM X-T5", lens: "XF 23mm f/1.4 R LM WR", focal: "23mm", aperture: "f/2.8", shutter: "1/1000s", iso: 160,
+    title: "Coast line", location: "Snæfellsnes, Iceland",
+    gps: "64.8833° N, 23.7833° W", profile: "Display P3", rating: 4 },
+  { id: "DSCF1061", src: "1470071459604-3b5ec3a7fe05", w: 6000, h: 4000, size: "14.2 MB", date: "Jul 20, 2025  ·  20:14",
+    camera: "FUJIFILM X-T5", lens: "XF 16-55mm f/2.8 R LM WR", focal: "23mm", aperture: "f/8.0", shutter: "30s", iso: 800,
+    title: "Aurora over Vík", location: "Vík í Mýrdal, Iceland",
+    gps: "63.4194° N, 19.0061° W", profile: "Display P3", rating: 5 }
+];
+
+// helpers
+PHOTOS.forEach(p => {
+  p.full = u(p.src, 2000);
+  p.thumb = u(p.src, 240);
+  p.aspect = p.w / p.h;
+});
+
+window.PHOTOS = PHOTOS;
+
+
+// Hairline icons. 20×20 viewBox unless noted. stroke=currentColor.
+const Svg = ({ children, size = 18, ...rest }) => (
+  <svg viewBox="0 0 20 20" width={size} height={size} fill="none" stroke="currentColor"
+       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...rest}>
+    {children}
+  </svg>
+);
+
+const Icons = {
+  RotateLeft: (p) => (
+    <Svg {...p}>
+      <path d="M4.2 9.5a6 6 0 1 1 .9 4.3" />
+      <path d="M4 5.5v4h4" />
+    </Svg>
+  ),
+  RotateRight: (p) => (
+    <Svg {...p}>
+      <path d="M15.8 9.5a6 6 0 1 0-.9 4.3" />
+      <path d="M16 5.5v4h-4" />
+    </Svg>
+  ),
+  FlipH: (p) => (
+    <Svg {...p}>
+      <path d="M10 3v14" strokeDasharray="1.5 2" />
+      <path d="M3.5 6.5l4 3.5-4 3.5z" />
+      <path d="M16.5 6.5l-4 3.5 4 3.5z" />
+    </Svg>
+  ),
+  FlipV: (p) => (
+    <Svg {...p}>
+      <path d="M3 10h14" strokeDasharray="1.5 2" />
+      <path d="M6.5 3.5l3.5 4 3.5-4z" />
+      <path d="M6.5 16.5l3.5-4 3.5 4z" />
+    </Svg>
+  ),
+  Crop: (p) => (
+    <Svg {...p}>
+      <path d="M5 2.5v12.5h12.5" />
+      <path d="M2.5 5h12.5v12.5" />
+    </Svg>
+  ),
+  Straighten: (p) => (
+    <Svg {...p}>
+      <path d="M2.5 13.5l11-11 4 4-11 11z" />
+      <path d="M11 5l1.5 1.5M8.5 7.5L10 9M6 10l1.5 1.5M3.5 12.5L5 14" />
+    </Svg>
+  ),
+  Fit: (p) => (
+    <Svg {...p}>
+      <path d="M3 7V3h4M17 7V3h-4M3 13v4h4M17 13v4h-4" />
+    </Svg>
+  ),
+  OneToOne: (p) => (
+    <Svg {...p}>
+      <text x="10" y="14" textAnchor="middle" fontSize="9" fontFamily="ui-sans-serif, sans-serif" fontWeight="600" fill="currentColor" stroke="none">1:1</text>
+    </Svg>
+  ),
+  Fill: (p) => (
+    <Svg {...p}>
+      <rect x="3" y="3" width="14" height="14" rx="1.5" />
+      <rect x="6" y="6" width="8" height="8" rx="0.5" fill="currentColor" stroke="none" opacity=".25"/>
+    </Svg>
+  ),
+  ZoomOut: (p) => (
+    <Svg {...p}>
+      <circle cx="9" cy="9" r="5" />
+      <path d="M13 13l4 4M6.5 9h5" />
+    </Svg>
+  ),
+  ZoomIn: (p) => (
+    <Svg {...p}>
+      <circle cx="9" cy="9" r="5" />
+      <path d="M13 13l4 4M6.5 9h5M9 6.5v5" />
+    </Svg>
+  ),
+  Share: (p) => (
+    <Svg {...p}>
+      <path d="M10 13V3M6.5 6.5L10 3l3.5 3.5" />
+      <path d="M4.5 11v5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-5" />
+    </Svg>
+  ),
+  Info: (p) => (
+    <Svg {...p}>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 9.5v4.5M10 6.5v.5" />
+    </Svg>
+  ),
+  Slideshow: (p) => (
+    <Svg {...p}>
+      <rect x="2.5" y="4" width="15" height="10" rx="1.5" />
+      <path d="M8.5 7.5v3l3-1.5z" fill="currentColor" stroke="none" />
+      <path d="M5 16.5h10" />
+    </Svg>
+  ),
+  Chevron: (p) => (
+    <Svg {...p}>
+      <path d="M7.5 5l5 5-5 5" />
+    </Svg>
+  ),
+  Folder: (p) => (
+    <Svg {...p}>
+      <path d="M2.5 6a1.5 1.5 0 0 1 1.5-1.5h3l1.5 1.5h7A1.5 1.5 0 0 1 17 7.5v7A1.5 1.5 0 0 1 15.5 16h-11A1.5 1.5 0 0 1 3 14.5z" />
+    </Svg>
+  ),
+  Star: ({ filled, ...p }) => (
+    <Svg {...p}>
+      <path d="M10 3l2.2 4.5 5 .7-3.6 3.5.85 5L10 14.4l-4.45 2.3.85-5L2.8 8.2l5-.7z"
+            fill={filled ? "currentColor" : "none"} />
+    </Svg>
+  ),
+  Search: (p) => (
+    <Svg {...p}>
+      <circle cx="9" cy="9" r="5" />
+      <path d="M13 13l4 4" />
+    </Svg>
+  ),
+};
+
+window.Icons = Icons;
+
+
+// See — photo viewer
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "light",
+  "infoPanel": true,
+  "bgTone": "charcoal"
+}/*EDITMODE-END*/;
+
+// ───────────────────────────────────────────────────────────────────
+// Bits
+// ───────────────────────────────────────────────────────────────────
+
+const tbBtnStyle = {
+  height: 32, minWidth: 32, padding: "0 8px",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
+  background: "transparent", border: 0, borderRadius: 8,
+  color: "var(--ink)", cursor: "pointer", transition: "background .12s ease",
+};
+
+function TBButton({ icon, label, onClick, active, title, kbd }) {
+  const [hover, setHover] = React.useState(false);
+  const Icon = icon;
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title={title + (kbd ? `  (${kbd})` : "")}
+      style={{
+        ...tbBtnStyle,
+        background: active ? "var(--hairline-strong)" : (hover ? "var(--hairline)" : "transparent"),
+      }}
+    >
+      {Icon ? <Icon size={17} /> : null}
+      {label ? <span style={{ fontSize: 12.5, fontWeight: 500, letterSpacing: "-0.005em" }}>{label}</span> : null}
+    </button>
+  );
+}
+
+function TBDivider() {
+  return <div style={{ width: 1, height: 18, background: "var(--hairline-strong)", margin: "0 6px" }} />;
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Top toolbar
+// ───────────────────────────────────────────────────────────────────
+
+function Toolbar({ title, index, total, photo,
+                   onRotate, onFlipH, onFlipV, onCrop, onStraighten,
+                   zoomMode, setZoomMode, zoom, onZoomIn, onZoomOut,
+                   onSlideshow, infoOpen, setInfoOpen }) {
+  return (
+    <header style={{
+      gridArea: "top",
+      display: "grid", gridTemplateColumns: "1fr auto 1fr",
+      alignItems: "center",
+      padding: "10px 14px",
+      borderBottom: "1px solid var(--hairline)",
+      background: "var(--surface)",
+      backdropFilter: "saturate(180%) blur(20px)",
+      WebkitBackdropFilter: "saturate(180%) blur(20px)",
+    }}>
+      {/* Left: folder + nav + title */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--ink-2)", fontSize: 12.5, minWidth: 0 }}>
+          <Icons.Folder size={15} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            Pictures · 2025 · <span style={{ color: "var(--ink)", fontWeight: 500 }}>Iceland & Faroes</span>
+          </span>
+        </div>
+        <div style={{ width: 1, height: 16, background: "var(--hairline-strong)" }} />
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <TBButton icon={(p) => <Icons.Chevron {...p} style={{ transform: "rotate(180deg)" }} />}
+                    title="Previous" kbd="←" onClick={() => window.dispatchEvent(new CustomEvent("nav", { detail: -1 }))} />
+          <TBButton icon={Icons.Chevron} title="Next" kbd="→" onClick={() => window.dispatchEvent(new CustomEvent("nav", { detail: 1 }))} />
+        </div>
+        <div style={{ fontSize: 12.5, color: "var(--ink-3)", fontVariantNumeric: "tabular-nums" }}>
+          {index + 1} <span style={{ color: "var(--ink-3)", opacity: .6 }}>/</span> {total}
+        </div>
+      </div>
+
+      {/* Center: filename */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", whiteSpace: "nowrap" }}>
+          {photo.title}
+        </div>
+        <div style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "var(--mono)", letterSpacing: 0 }}>
+          {photo.id}.RAF
+        </div>
+      </div>
+
+      {/* Right: actions */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 0 }}>
+        <TBButton icon={Icons.RotateLeft} title="Rotate left"  kbd="⌘L" onClick={() => onRotate(-90)} />
+        <TBButton icon={Icons.RotateRight} title="Rotate right" kbd="⌘R" onClick={() => onRotate(+90)} />
+        <TBButton icon={Icons.FlipH}      title="Flip horizontal" onClick={onFlipH} />
+        <TBButton icon={Icons.FlipV}      title="Flip vertical"   onClick={onFlipV} />
+        <TBDivider />
+        <TBButton icon={Icons.Crop}        title="Crop"        kbd="C" onClick={onCrop} />
+        <TBButton icon={Icons.Straighten}  title="Straighten"          onClick={onStraighten} />
+        <TBDivider />
+        <TBButton icon={Icons.ZoomOut} title="Zoom out" kbd="−" onClick={onZoomOut} />
+        <div style={{ fontSize: 11.5, color: "var(--ink-2)", fontFamily: "var(--mono)",
+                       minWidth: 44, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+          {Math.round(zoom * 100)}%
+        </div>
+        <TBButton icon={Icons.ZoomIn} title="Zoom in" kbd="+" onClick={onZoomIn} />
+        <TBButton icon={Icons.Fit}      title="Fit to window" kbd="F" active={zoomMode === "fit"}
+                  onClick={() => setZoomMode("fit")} />
+        <TBButton icon={Icons.OneToOne} title="Actual size"   kbd="1" active={zoomMode === "100"}
+                  onClick={() => setZoomMode("100")} />
+        <TBButton icon={Icons.Fill}     title="Fill"                  active={zoomMode === "fill"}
+                  onClick={() => setZoomMode("fill")} />
+        <TBDivider />
+        <TBButton icon={Icons.Slideshow} title="Slideshow"     onClick={onSlideshow} />
+        <TBButton icon={Icons.Share}     title="Share / Export" />
+        <TBButton icon={Icons.Info}      title="Toggle Info panel" kbd="I"
+                  active={infoOpen} onClick={() => setInfoOpen(v => !v)} />
+      </div>
+    </header>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Main canvas (photo)
+// ───────────────────────────────────────────────────────────────────
+
+function Stage({ photo, rotation, flip, zoom, zoomMode, bgTone }) {
+  const wrapRef = React.useRef(null);
+  const [box, setBox] = React.useState({ w: 0, h: 0 });
+
+  React.useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      setBox({ w: r.width, h: r.height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // figure out displayed dims
+  const rotated = (rotation / 90) % 2 !== 0;
+  const aspect = rotated ? (photo.h / photo.w) : (photo.w / photo.h);
+
+  // base "fit" size
+  let fitW = box.w, fitH = box.w / aspect;
+  if (fitH > box.h) { fitH = box.h; fitW = box.h * aspect; }
+
+  // base "fill" size
+  let fillW = box.w, fillH = box.w / aspect;
+  if (fillH < box.h) { fillH = box.h; fillW = box.h * aspect; }
+
+  let baseW, baseH;
+  if (zoomMode === "fill") { baseW = fillW; baseH = fillH; }
+  else if (zoomMode === "100") {
+    // 1:1 of the photo (we treat 2000px source as actual)
+    baseW = rotated ? photo.h : photo.w;
+    baseH = rotated ? photo.w : photo.h;
+    // scale down so it shows reasonably
+    baseW = Math.min(baseW, 2000); baseH = Math.min(baseH, 2000 / aspect);
+  } else { baseW = fitW; baseH = fitH; }
+
+  const finalW = baseW * zoom;
+  const finalH = baseH * zoom;
+
+  const bgFill = bgTone === "black" ? "#050507"
+               : bgTone === "paper" ? "var(--bg)"
+               : "var(--canvas)";
+
+  return (
+    <div ref={wrapRef} style={{
+      gridArea: "stage", position: "relative", overflow: "hidden",
+      background: bgFill,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      backgroundImage: bgTone === "checker" ?
+        "linear-gradient(45deg, #2a2a2e 25%, transparent 25%), linear-gradient(-45deg, #2a2a2e 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2e 75%), linear-gradient(-45deg, transparent 75%, #2a2a2e 75%)" : undefined,
+      backgroundSize: bgTone === "checker" ? "20px 20px" : undefined,
+      backgroundPosition: bgTone === "checker" ? "0 0, 0 10px, 10px -10px, -10px 0" : undefined,
+    }}>
+      {/* the image */}
+      <div style={{
+        width: finalW, height: finalH,
+        transition: "width .2s ease, height .2s ease",
+        position: "relative",
+        boxShadow: "0 30px 80px -30px #00000088, 0 2px 0 #ffffff04 inset",
+      }}>
+        <img
+          src={photo.full}
+          alt=""
+          draggable={false}
+          style={{
+            width: "100%", height: "100%", display: "block",
+            objectFit: "cover",
+            transform: `rotate(${rotation}deg) scale(${flip.h ? -1 : 1}, ${flip.v ? -1 : 1})`,
+            transformOrigin: "center",
+            transition: "transform .35s cubic-bezier(.2,.8,.2,1)",
+            userSelect: "none",
+          }}
+        />
+      </div>
+
+      {/* corner: resolution */}
+      <div style={{
+        position: "absolute", top: 12, right: 12,
+        padding: "4px 8px", borderRadius: 6,
+        background: "#0008", color: "#f1f0ec",
+        fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 0,
+        opacity: .55,
+      }}>
+        {photo.w} × {photo.h}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Filmstrip
+// ───────────────────────────────────────────────────────────────────
+
+function Filmstrip({ photos, index, setIndex }) {
+  const stripRef = React.useRef(null);
+
+  React.useEffect(() => {
+    // keep selected thumbnail in view
+    const el = stripRef.current?.querySelector(`[data-idx="${index}"]`);
+    if (el) {
+      const parent = stripRef.current;
+      const er = el.getBoundingClientRect();
+      const pr = parent.getBoundingClientRect();
+      if (er.left < pr.left + 24 || er.right > pr.right - 24) {
+        parent.scrollTo({ left: el.offsetLeft - parent.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
+      }
+    }
+  }, [index]);
+
+  return (
+    <div style={{
+      gridArea: "strip",
+      borderTop: "1px solid var(--hairline)",
+      borderBottom: "1px solid var(--hairline)",
+      background: "var(--surface)",
+      backdropFilter: "saturate(180%) blur(20px)",
+      WebkitBackdropFilter: "saturate(180%) blur(20px)",
+      padding: "10px 14px 12px",
+      position: "relative",
+    }}>
+      <div ref={stripRef} style={{
+        display: "flex", gap: 4,
+        overflowX: "auto", overflowY: "hidden",
+        scrollbarWidth: "none", msOverflowStyle: "none",
+        paddingBottom: 2,
+      }}>
+        <style>{`#strip-scroll::-webkit-scrollbar{display:none}`}</style>
+        {photos.map((p, i) => {
+          const selected = i === index;
+          return (
+            <button
+              key={p.id}
+              data-idx={i}
+              onClick={() => setIndex(i)}
+              style={{
+                flex: "0 0 auto",
+                width: 64, height: 64,
+                padding: 0, border: 0, cursor: "pointer",
+                position: "relative",
+                borderRadius: 4,
+                background: "transparent",
+                outline: selected ? "2px solid var(--ink)" : "1px solid var(--hairline-strong)",
+                outlineOffset: selected ? 1 : 0,
+                transform: selected ? "translateY(-2px)" : "none",
+                transition: "transform .15s ease, outline-color .12s ease",
+              }}
+              title={`${p.id} — ${p.title}`}
+            >
+              <img src={p.thumb} alt="" draggable={false}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block",
+                         borderRadius: 3, opacity: selected ? 1 : 0.85 }} />
+              {/* rating dot */}
+              {p.rating >= 5 ? (
+                <span style={{
+                  position: "absolute", top: 4, right: 4, width: 6, height: 6, borderRadius: 99,
+                  background: "#ffcc33", boxShadow: "0 0 0 1px #00000033"
+                }} />
+              ) : null}
+              <span style={{
+                position: "absolute", bottom: 3, left: 4,
+                fontFamily: "var(--mono)", fontSize: 9, color: "#fff",
+                textShadow: "0 1px 2px #000a", letterSpacing: 0,
+                opacity: selected ? 1 : 0.7,
+              }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Bottom meta bar
+// ───────────────────────────────────────────────────────────────────
+
+function MetaBar({ photo }) {
+  const Cell = ({ label, value, mono }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 10, color: "var(--ink-3)", textTransform: "uppercase",
+                     letterSpacing: "0.06em", fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 500,
+                     fontFamily: mono ? "var(--mono)" : "var(--sans)",
+                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {value}
+      </div>
+    </div>
+  );
+
+  return (
+    <footer style={{
+      gridArea: "bottom",
+      display: "grid",
+      gridTemplateColumns: "minmax(160px,1.2fr) minmax(120px,1fr) minmax(100px,1fr) minmax(160px,1.4fr) auto",
+      alignItems: "center",
+      gap: 28,
+      padding: "10px 18px",
+      background: "var(--surface)",
+      backdropFilter: "saturate(180%) blur(20px)",
+      WebkitBackdropFilter: "saturate(180%) blur(20px)",
+    }}>
+      <Cell label="File"        value={`${photo.id}.RAF`} mono />
+      <Cell label="Resolution"  value={`${photo.w} × ${photo.h}`} mono />
+      <Cell label="Size"        value={photo.size} mono />
+      <Cell label="Captured"    value={photo.date} />
+      {/* right cluster: stars + selected count */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
+        <div style={{ display: "inline-flex", color: "var(--ink-2)" }}>
+          {[1, 2, 3, 4, 5].map(n => (
+            <span key={n} style={{ color: n <= photo.rating ? "#e8a900" : "var(--ink-3)", opacity: n <= photo.rating ? 1 : .35 }}>
+              <Icons.Star size={13} filled={n <= photo.rating} />
+            </span>
+          ))}
+        </div>
+        <div style={{ width: 1, height: 16, background: "var(--hairline-strong)" }} />
+        <div style={{ fontSize: 11.5, color: "var(--ink-3)", fontFamily: "var(--mono)" }}>
+          1 of {window.PHOTOS.length} selected
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Right info panel
+// ───────────────────────────────────────────────────────────────────
+
+function InfoPanel({ photo }) {
+  const Row = ({ label, value, mono = true }) => (
+    <div style={{ display: "grid", gridTemplateColumns: "92px 1fr", gap: 12,
+                  padding: "7px 0", borderBottom: "1px solid var(--hairline)" }}>
+      <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{label}</div>
+      <div style={{ fontSize: 12, color: "var(--ink)",
+                     fontFamily: mono ? "var(--mono)" : "var(--sans)",
+                     fontWeight: mono ? 400 : 500 }}>{value}</div>
+    </div>
+  );
+  return (
+    <aside style={{
+      gridArea: "panel",
+      borderLeft: "1px solid var(--hairline)",
+      background: "var(--surface-solid)",
+      overflowY: "auto",
+      padding: "18px 20px 24px",
+    }}>
+      <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase",
+                     letterSpacing: "0.08em", fontWeight: 600, marginBottom: 10 }}>
+        Information
+      </div>
+
+      <h2 style={{ fontSize: 18, margin: "0 0 4px", letterSpacing: "-0.015em", lineHeight: 1.2 }}>
+        {photo.title}
+      </h2>
+      <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginBottom: 18 }}>{photo.location}</div>
+
+      {/* histogram (placeholder waveform-y) */}
+      <div style={{ height: 64, marginBottom: 18,
+                     borderRadius: 6, padding: "8px 10px",
+                     background: "var(--hairline)", position: "relative", overflow: "hidden" }}>
+        <Histogram seed={photo.id} />
+      </div>
+
+      <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase",
+                     letterSpacing: "0.08em", fontWeight: 600, margin: "4px 0 6px" }}>
+        Camera
+      </div>
+      <Row label="Camera" value={photo.camera} mono={false} />
+      <Row label="Lens"   value={photo.lens}   mono={false} />
+      <Row label="Focal"  value={photo.focal} />
+      <Row label="ƒ"      value={photo.aperture} />
+      <Row label="Shutter" value={photo.shutter} />
+      <Row label="ISO"    value={photo.iso} />
+
+      <div style={{ height: 14 }} />
+      <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase",
+                     letterSpacing: "0.08em", fontWeight: 600, margin: "4px 0 6px" }}>
+        File
+      </div>
+      <Row label="Filename"   value={`${photo.id}.RAF`} />
+      <Row label="Dimensions" value={`${photo.w} × ${photo.h}`} />
+      <Row label="Size"       value={photo.size} />
+      <Row label="Captured"   value={photo.date} mono={false} />
+      <Row label="Profile"    value={photo.profile} mono={false} />
+
+      <div style={{ height: 14 }} />
+      <div style={{ fontSize: 11, color: "var(--ink-3)", textTransform: "uppercase",
+                     letterSpacing: "0.08em", fontWeight: 600, margin: "4px 0 6px" }}>
+        Location
+      </div>
+      <Row label="Coords" value={photo.gps} />
+      <div style={{ marginTop: 10, height: 110, borderRadius: 8, overflow: "hidden",
+                     border: "1px solid var(--hairline)", position: "relative",
+                     background: "var(--bg)" }}>
+        <MiniMap photo={photo} />
+      </div>
+    </aside>
+  );
+}
+
+function Histogram({ seed }) {
+  // deterministic from seed
+  const bars = React.useMemo(() => {
+    let s = 0;
+    for (let i = 0; i < seed.length; i++) s = (s * 31 + seed.charCodeAt(i)) >>> 0;
+    const rng = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xFFFFFFFF; };
+    const N = 64;
+    return Array.from({ length: N }, (_, i) => {
+      const t = i / N;
+      // bell-curve shape with noise
+      const bell = Math.exp(-Math.pow((t - 0.55) / 0.28, 2));
+      return Math.max(0.04, Math.min(1, bell * (0.6 + rng() * 0.55)));
+    });
+  }, [seed]);
+
+  return (
+    <svg viewBox="0 0 200 48" style={{ width: "100%", height: "100%", display: "block" }}>
+      <defs>
+        <linearGradient id="hg" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="#222" stopOpacity=".75" />
+          <stop offset=".5" stopColor="#888" stopOpacity=".75" />
+          <stop offset="1" stopColor="#fff" stopOpacity=".95" />
+        </linearGradient>
+      </defs>
+      {bars.map((v, i) => (
+        <rect key={i} x={i * (200 / 64) + 0.4} y={48 - v * 44} width={200 / 64 - 0.8}
+              height={v * 44} fill="url(#hg)" opacity=".85" />
+      ))}
+    </svg>
+  );
+}
+
+function MiniMap({ photo }) {
+  // pull lat/lng for a tiny indicator dot — abstract map only
+  return (
+    <div style={{ position: "absolute", inset: 0,
+                   backgroundImage: "radial-gradient(circle at 30% 70%, #b9d4ff 0 18%, transparent 18%), radial-gradient(circle at 75% 50%, #b9d4ff 0 22%, transparent 22%), radial-gradient(circle at 55% 30%, #b9d4ff 0 14%, transparent 14%)",
+                   backgroundColor: "#eef0f2" }}>
+      <svg viewBox="0 0 100 60" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+        <path d="M0 40 Q 20 30 35 38 T 70 32 T 100 30" stroke="#b9d4ff" fill="none" strokeWidth="0.8" />
+        <path d="M0 50 Q 30 44 50 48 T 100 44" stroke="#b9d4ff" fill="none" strokeWidth="0.6" />
+      </svg>
+      <div style={{
+        position: "absolute", left: "62%", top: "44%",
+        width: 10, height: 10, borderRadius: 99,
+        background: "var(--accent)", boxShadow: "0 0 0 4px #1a73ff33, 0 0 0 1px #1a73ff",
+        transform: "translate(-50%,-50%)",
+      }} />
+      <div style={{ position: "absolute", left: 8, bottom: 6, fontSize: 10,
+                     color: "#5a5963", fontFamily: "var(--mono)" }}>
+        {photo.gps}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Slideshow overlay
+// ───────────────────────────────────────────────────────────────────
+
+function Slideshow({ photo, onClose }) {
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, background: "#000",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 99, cursor: "pointer",
+    }}>
+      <img src={photo.full} style={{ maxWidth: "94vw", maxHeight: "94vh", objectFit: "contain",
+                                       boxShadow: "0 40px 100px -20px #000" }} />
+      <div style={{ position: "absolute", bottom: 28, left: 0, right: 0, textAlign: "center",
+                     color: "#aaa", fontSize: 12, fontFamily: "var(--mono)" }}>
+        click anywhere or press Esc to exit
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Viewer
+// ───────────────────────────────────────────────────────────────────
+
+function Viewer() {
+  const [index, setIndex] = React.useState(3);
+  const [rotation, setRotation] = React.useState(0);
+  const [flip, setFlip] = React.useState({ h: false, v: false });
+  const [zoomMode, setZoomMode] = React.useState("fit"); // fit | fill | 100
+  const [zoom, setZoom] = React.useState(1);
+  const [slideshow, setSlideshow] = React.useState(false);
+
+  const [tweakValues, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const tweaks = { values: tweakValues, setTweak };
+
+  // theme on <html>
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-theme", tweaks.values.theme);
+  }, [tweaks.values.theme]);
+
+  const photo = window.PHOTOS[index];
+
+  // reset transforms on photo change
+  React.useEffect(() => { setRotation(0); setFlip({ h: false, v: false }); setZoom(1); }, [index]);
+
+  // keys
+  React.useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "ArrowLeft")  setIndex(i => (i - 1 + window.PHOTOS.length) % window.PHOTOS.length);
+      else if (e.key === "ArrowRight") setIndex(i => (i + 1) % window.PHOTOS.length);
+      else if (e.key === "+" || e.key === "=") setZoom(z => Math.min(4, +(z + 0.1).toFixed(2)));
+      else if (e.key === "-") setZoom(z => Math.max(0.2, +(z - 0.1).toFixed(2)));
+      else if (e.key.toLowerCase() === "f") setZoomMode("fit");
+      else if (e.key === "1") setZoomMode("100");
+      else if (e.key.toLowerCase() === "i") tweaks.setTweak("infoPanel", !tweaks.values.infoPanel);
+      else if (e.key === "Escape") setSlideshow(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tweaks.values.infoPanel]);
+
+  // listen for nav events from toolbar
+  React.useEffect(() => {
+    const onNav = (e) => setIndex(i => (i + e.detail + window.PHOTOS.length) % window.PHOTOS.length);
+    window.addEventListener("nav", onNav);
+    return () => window.removeEventListener("nav", onNav);
+  }, []);
+
+  const infoOpen = !!tweaks.values.infoPanel;
+
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: infoOpen ? "minmax(0,1fr) minmax(0,320px)" : "minmax(0,1fr)",
+      width: "100vw",
+      gridTemplateRows: "auto 1fr auto auto",
+      gridTemplateAreas: infoOpen
+        ? `"top top" "stage panel" "strip panel" "bottom panel"`
+        : `"top" "stage" "strip" "bottom"`,
+      height: "100vh",
+      transition: "grid-template-columns .25s ease",
+    }}>
+      <Toolbar
+        title={photo.title} index={index} total={window.PHOTOS.length} photo={photo}
+        onRotate={(d) => setRotation(r => r + d)}
+        onFlipH={() => setFlip(f => ({ ...f, h: !f.h }))}
+        onFlipV={() => setFlip(f => ({ ...f, v: !f.v }))}
+        onCrop={() => {}} onStraighten={() => {}}
+        zoomMode={zoomMode} setZoomMode={(m) => { setZoomMode(m); setZoom(1); }}
+        zoom={zoom}
+        onZoomIn={() => setZoom(z => Math.min(4, +(z + 0.1).toFixed(2)))}
+        onZoomOut={() => setZoom(z => Math.max(0.2, +(z - 0.1).toFixed(2)))}
+        onSlideshow={() => setSlideshow(true)}
+        infoOpen={infoOpen}
+        setInfoOpen={(v) => tweaks.setTweak("infoPanel", typeof v === "function" ? v(infoOpen) : v)}
+      />
+
+      <Stage photo={photo} rotation={rotation} flip={flip}
+             zoom={zoom} zoomMode={zoomMode} bgTone={tweaks.values.bgTone} />
+
+      <Filmstrip photos={window.PHOTOS} index={index} setIndex={setIndex} />
+
+      <MetaBar photo={photo} />
+
+      {infoOpen ? <InfoPanel photo={photo} /> : null}
+
+      {slideshow ? <Slideshow photo={photo} onClose={() => setSlideshow(false)} /> : null}
+
+      {/* Tweaks panel */}
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Theme">
+          <TweakRadio
+            value={tweaks.values.theme}
+            onChange={(v) => tweaks.setTweak("theme", v)}
+            options={[
+              { value: "light", label: "Light" },
+              { value: "dim",   label: "Dim" },
+              { value: "dark",  label: "Dark" },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection title="Photo backdrop">
+          <TweakRadio
+            value={tweaks.values.bgTone}
+            onChange={(v) => tweaks.setTweak("bgTone", v)}
+            options={[
+              { value: "charcoal", label: "Charcoal" },
+              { value: "black",    label: "Pure black" },
+              { value: "paper",    label: "Paper" },
+              { value: "checker",  label: "Checker" },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection title="Layout">
+          <TweakToggle
+            label="Show info panel"
+            checked={tweaks.values.infoPanel}
+            onChange={(v) => tweaks.setTweak("infoPanel", v)}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+window.Viewer = Viewer;
+
+  const root = ReactDOM.createRoot(document.getElementById('app'));
+  root.render(<Viewer />);
+  </script>
+</body>
+</html>
