@@ -129,5 +129,5 @@ struct StageView: View {
 }
 
 private func loadImage(from url: URL) async -> NSImage? {
-    await Task.detached { NSImage(contentsOf: url) }.value
+    await Task.detached { loadDisplayImage(url: url) }.value
 }

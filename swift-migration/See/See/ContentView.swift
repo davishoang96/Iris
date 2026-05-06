@@ -56,6 +56,7 @@ class AppState: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var state = AppState()
+    @FocusState private var detailFocused: Bool
 
     var body: some View {
         NavigationSplitView {
@@ -150,6 +151,11 @@ struct ContentView: View {
         }
     }
 
+    private func navigate(_ delta: Int) {
+        guard !state.photos.isEmpty else { return }
+        state.selectedIndex = (state.selectedIndex + delta + state.photos.count) % state.photos.count
+    }
+
     private func photoDetail(_ photo: PhotoMeta) -> some View {
         VStack(spacing: 0) {
             StageView(
@@ -161,14 +167,21 @@ struct ContentView: View {
                 zoomMode: $state.zoomMode
             )
 
+            FilmstripView(photos: state.photos, selectedIndex: $state.selectedIndex)
+
             Divider()
 
             ScrollView {
                 metaGrid(photo)
                     .padding()
             }
-            .frame(maxHeight: 180)
+            .frame(maxHeight: 160)
         }
+        .focusable()
+        .focused($detailFocused)
+        .onKeyPress(.leftArrow)  { navigate(-1); return .handled }
+        .onKeyPress(.rightArrow) { navigate(+1); return .handled }
+        .onAppear { detailFocused = true }
         .navigationTitle(photo.name)
         .navigationSubtitle("\(state.selectedIndex + 1) of \(state.photos.count)")
     }
