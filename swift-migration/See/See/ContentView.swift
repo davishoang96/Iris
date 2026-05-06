@@ -6,11 +6,29 @@ import Combine
 class AppState: ObservableObject {
     @Published var folderURL: URL? = nil
     @Published var photos: [PhotoMeta] = []
-    @Published var selectedIndex: Int = 0
     @Published var loading = false
+
+    @Published var selectedIndex: Int = 0 {
+        didSet { if oldValue != selectedIndex { resetTransforms() } }
+    }
+
+    // Transform state — reset on photo change, controlled by toolbar in Phase 5
+    @Published var rotation: Angle = .zero
+    @Published var flipH: Bool = false
+    @Published var flipV: Bool = false
+    @Published var zoom: Double = 1.0
+    @Published var zoomMode: ZoomMode = .fit
 
     var selectedPhoto: PhotoMeta? {
         photos.indices.contains(selectedIndex) ? photos[selectedIndex] : nil
+    }
+
+    func resetTransforms() {
+        rotation = .zero
+        flipH = false
+        flipV = false
+        zoom = 1.0
+        zoomMode = .fit
     }
 
     func openFolder() {
@@ -48,7 +66,7 @@ struct ContentView: View {
         .frame(minWidth: 700, minHeight: 500)
     }
 
-    // MARK: Sidebar — photo list
+    // MARK: Sidebar
 
     @ViewBuilder
     private var sidebar: some View {
@@ -88,8 +106,7 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 }
                 if !photo.camera.isEmpty {
-                    Text("·")
-                        .foregroundStyle(.tertiary)
+                    Text("·").foregroundStyle(.tertiary)
                     Text(photo.camera)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
@@ -112,7 +129,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: Detail — photo info
+    // MARK: Detail
 
     @ViewBuilder
     private var detail: some View {
@@ -134,23 +151,23 @@ struct ContentView: View {
     }
 
     private func photoDetail(_ photo: PhotoMeta) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // placeholder for stage — Phase 2
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(white: 0.16))
-                    .frame(height: 320)
-                    .overlay {
-                        Text(photo.name)
-                            .font(.system(size: 13, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
+        VStack(spacing: 0) {
+            StageView(
+                photo: photo,
+                rotation: $state.rotation,
+                flipH: $state.flipH,
+                flipV: $state.flipV,
+                zoom: $state.zoom,
+                zoomMode: $state.zoomMode
+            )
 
+            Divider()
+
+            ScrollView {
                 metaGrid(photo)
-                    .padding(.horizontal)
-                    .padding(.bottom)
+                    .padding()
             }
+            .frame(maxHeight: 180)
         }
         .navigationTitle(photo.name)
         .navigationSubtitle("\(state.selectedIndex + 1) of \(state.photos.count)")

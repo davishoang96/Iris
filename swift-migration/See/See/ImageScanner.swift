@@ -1,21 +1,13 @@
 import Foundation
 import ImageIO
 
-private let supportedExtensions: Set<String> = [
-    "jpg", "jpeg", "png", "heic", "heif", "webp",
-    "raf", "dng", "nef", "cr2", "cr3", "arw",
-    "tiff", "tif",
-]
-
-private let months = ["Jan","Feb","Mar","Apr","May","Jun",
-                      "Jul","Aug","Sep","Oct","Nov","Dec"]
-
 nonisolated private func formatSize(_ bytes: Int) -> String {
     String(format: "%.1f MB", Double(bytes) / 1_000_000)
 }
 
 nonisolated private func formatExifDate(_ s: String) -> String {
-    // EXIF date: "2024:07:15 14:30:00"
+    let months = ["Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec"]
     let parts = s.split(separator: " ", maxSplits: 1)
     guard parts.count == 2 else { return s }
     let dateParts = parts[0].split(separator: ":")
@@ -31,6 +23,12 @@ nonisolated private func formatExifDate(_ s: String) -> String {
 }
 
 nonisolated func buildPhotoMeta(url: URL) -> PhotoMeta? {
+    let supportedExtensions: Set<String> = [
+        "jpg", "jpeg", "png", "heic", "heif", "webp",
+        "raf", "dng", "nef", "cr2", "cr3", "arw",
+        "tiff", "tif",
+    ]
+
     guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
           let fileSize = attrs[.size] as? Int else { return nil }
 
@@ -60,8 +58,7 @@ nonisolated func buildPhotoMeta(url: URL) -> PhotoMeta? {
     switch (make.isEmpty, model.isEmpty) {
     case (true, _):  camera = model
     case (_, true):  camera = make
-    default:
-        camera = model.hasPrefix(make) ? model : "\(make) \(model)"
+    default:         camera = model.hasPrefix(make) ? model : "\(make) \(model)"
     }
 
     let lens = exif[kCGImagePropertyExifLensModel] as? String ?? ""
@@ -107,6 +104,12 @@ nonisolated func buildPhotoMeta(url: URL) -> PhotoMeta? {
 }
 
 nonisolated func scanFolder(_ url: URL) -> [PhotoMeta] {
+    let supportedExtensions: Set<String> = [
+        "jpg", "jpeg", "png", "heic", "heif", "webp",
+        "raf", "dng", "nef", "cr2", "cr3", "arw",
+        "tiff", "tif",
+    ]
+
     guard let entries = try? FileManager.default.contentsOfDirectory(
         at: url,
         includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
