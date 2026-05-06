@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-enum ZoomMode { case fit, hundred, custom }
+enum ZoomMode: Hashable { case fit, hundred, custom }
 
 struct StageView: View {
     let photo: PhotoMeta

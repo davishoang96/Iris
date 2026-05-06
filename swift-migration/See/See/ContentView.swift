@@ -12,15 +12,40 @@ class AppState: ObservableObject {
         didSet { if oldValue != selectedIndex { resetTransforms() } }
     }
 
-    // Transform state — reset on photo change, controlled by toolbar in Phase 5
     @Published var rotation: Angle = .zero
     @Published var flipH: Bool = false
     @Published var flipV: Bool = false
     @Published var zoom: Double = 1.0
     @Published var zoomMode: ZoomMode = .fit
 
+    @Published var infoOpen: Bool = false
+    @Published var slideshowActive: Bool = false
+
     var selectedPhoto: PhotoMeta? {
         photos.indices.contains(selectedIndex) ? photos[selectedIndex] : nil
+    }
+
+    var hasPhotos: Bool { !photos.isEmpty }
+
+    func navigate(_ delta: Int) {
+        guard hasPhotos else { return }
+        selectedIndex = (selectedIndex + delta + photos.count) % photos.count
+    }
+
+    func nudgeZoom(_ delta: Double) {
+        if zoomMode != .custom { zoom = 1.0 }
+        zoom = max(0.2, min(8.0, zoom + delta))
+        zoomMode = .custom
+    }
+
+    func setFit() {
+        zoomMode = .fit
+        zoom = 1.0
+    }
+
+    func setHundred() {
+        zoomMode = .hundred
+        zoom = 1.0
     }
 
     func resetTransforms() {
@@ -54,17 +79,26 @@ class AppState: ObservableObject {
     }
 }
 
+// MARK: - Root view
+
 struct ContentView: View {
     @StateObject private var state = AppState()
     @FocusState private var detailFocused: Bool
 
     var body: some View {
-        NavigationSplitView {
-            sidebar
-        } detail: {
-            detail
+        ZStack {
+            NavigationSplitView {
+                sidebar
+            } detail: {
+                detail
+            }
+            .frame(minWidth: 700, minHeight: 500)
+
+            if state.slideshowActive, let photo = state.selectedPhoto {
+                SlideshowView(photo: photo) { state.slideshowActive = false }
+                    .zIndex(999)
+            }
         }
-        .frame(minWidth: 700, minHeight: 500)
     }
 
     // MARK: Sidebar
@@ -151,11 +185,6 @@ struct ContentView: View {
         }
     }
 
-    private func navigate(_ delta: Int) {
-        guard !state.photos.isEmpty else { return }
-        state.selectedIndex = (state.selectedIndex + delta + state.photos.count) % state.photos.count
-    }
-
     private func photoDetail(_ photo: PhotoMeta) -> some View {
         VStack(spacing: 0) {
             StageView(
@@ -172,19 +201,121 @@ struct ContentView: View {
             Divider()
 
             ScrollView {
-                metaGrid(photo)
-                    .padding()
+                metaGrid(photo).padding()
             }
             .frame(maxHeight: 160)
         }
         .focusable()
         .focused($detailFocused)
-        .onKeyPress(.leftArrow)  { navigate(-1); return .handled }
-        .onKeyPress(.rightArrow) { navigate(+1); return .handled }
         .onAppear { detailFocused = true }
+        // Navigation
+        .onKeyPress(.leftArrow)        { state.navigate(-1); return .handled }
+        .onKeyPress(.rightArrow)       { state.navigate(+1); return .handled }
+        // Zoom
+        .onKeyPress(KeyEquivalent("+")) { state.nudgeZoom(+0.1); return .handled }
+        .onKeyPress(KeyEquivalent("=")) { state.nudgeZoom(+0.1); return .handled }
+        .onKeyPress(KeyEquivalent("-")) { state.nudgeZoom(-0.1); return .handled }
+        .onKeyPress(KeyEquivalent("f")) { state.setFit(); return .handled }
+        .onKeyPress(KeyEquivalent("F")) { state.setFit(); return .handled }
+        .onKeyPress(KeyEquivalent("1")) { state.setHundred(); return .handled }
+        // Info panel
+        .onKeyPress(KeyEquivalent("i")) { state.infoOpen.toggle(); return .handled }
+        .onKeyPress(KeyEquivalent("I")) { state.infoOpen.toggle(); return .handled }
+        // Slideshow / escape
+        .onKeyPress(.escape) {
+            if state.slideshowActive { state.slideshowActive = false; return .handled }
+            return .ignored
+        }
+        .toolbar { detailToolbar }
         .navigationTitle(photo.name)
         .navigationSubtitle("\(state.selectedIndex + 1) of \(state.photos.count)")
     }
+
+    // MARK: Toolbar
+
+    @ToolbarContentBuilder
+    private var detailToolbar: some ToolbarContent {
+        // Navigation
+        ToolbarItemGroup(placement: .automatic) {
+            ControlGroup {
+                Button { state.navigate(-1) } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .help("Previous  ←")
+                Button { state.navigate(+1) } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .help("Next  →")
+            }
+            .disabled(!state.hasPhotos)
+
+            // Rotate
+            ControlGroup {
+                Button { state.rotation -= .degrees(90) } label: {
+                    Image(systemName: "rotate.left")
+                }
+                .help("Rotate Left")
+                Button { state.rotation += .degrees(90) } label: {
+                    Image(systemName: "rotate.right")
+                }
+                .help("Rotate Right")
+            }
+            .disabled(!state.hasPhotos)
+
+            // Flip
+            ControlGroup {
+                Button { state.flipH.toggle() } label: {
+                    Image(systemName: "arrow.left.and.right.righttriangle.left.righttriangle.right")
+                }
+                .help("Flip Horizontal")
+                Button { state.flipV.toggle() } label: {
+                    Image(systemName: "arrow.up.and.down.righttriangle.up.righttriangle.down")
+                }
+                .help("Flip Vertical")
+            }
+            .disabled(!state.hasPhotos)
+
+            // Zoom controls
+            ControlGroup {
+                Button { state.nudgeZoom(-0.1) } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                }
+                .help("Zoom Out  −")
+                Button { state.nudgeZoom(+0.1) } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                }
+                .help("Zoom In  +")
+            }
+            .disabled(!state.hasPhotos)
+
+            // Zoom mode
+            Picker("Zoom Mode", selection: $state.zoomMode) {
+                Text("Fit").tag(ZoomMode.fit)
+                Text("1:1").tag(ZoomMode.hundred)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 84)
+            .help("f = Fit  ·  1 = 1:1")
+            .disabled(!state.hasPhotos)
+        }
+
+        // Slideshow + Info
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button { state.slideshowActive = true } label: {
+                Image(systemName: "play.fill")
+            }
+            .help("Slideshow")
+            .disabled(!state.hasPhotos)
+
+            Button { state.infoOpen.toggle() } label: {
+                Image(systemName: state.infoOpen ? "info.circle.fill" : "info.circle")
+            }
+            .help("Info Panel  i")
+            .disabled(!state.hasPhotos)
+        }
+    }
+
+    // MARK: EXIF grid
 
     private func metaGrid(_ photo: PhotoMeta) -> some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 6) {
