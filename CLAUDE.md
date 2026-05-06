@@ -5,72 +5,85 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Run full app (Tauri + React dev server)
-npm run tauri dev
+# Build (must run from the See/ directory containing See.xcodeproj)
+cd /Users/davis/repos/See
+xcodebuild -project See.xcodeproj -scheme See -destination 'platform=macOS' build
 
-# Frontend-only dev server (no native shell, port 1420)
-npm run dev
+# Build — errors/result only
+xcodebuild -project See.xcodeproj -scheme See -destination 'platform=macOS' build 2>&1 | grep -E "error:|Build succeeded|Build FAILED" | grep -v appintents
 
-# Build for distribution
-npm run tauri build
-
-# Type-check frontend
-npx tsc --noEmit
-
-# Build Rust only (from src-tauri/)
-cargo build
-cargo check
+# Run
+open ~/Library/Developer/Xcode/DerivedData/See-*/Build/Products/Debug/See.app
 ```
 
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run single test file
-npx vitest run src/icons.test.tsx
-```
+No tests exist. `ui-design-guideline/` contains standalone JSX reference files (not part of the build, not runnable).
 
 ## Architecture
 
-Tauri v2 desktop app. Two separate processes:
+macOS SwiftUI app. Single Xcode project at `/Users/davis/repos/See/See.xcodeproj`, sources in `See/`.
 
-**Frontend** (`src/`) — React 18 + TypeScript, bundled by Vite on port 1420.
-- Entry: `src/main.tsx` → `src/App.tsx`
-- Calls Rust via `invoke("command_name", { args })` from `@tauri-apps/api/core`
+**`PBXFileSystemSynchronizedRootGroup`** — Xcode 16+ feature. Any `.swift` file added to `See/` is automatically compiled. No pbxproj edits needed.
 
-**Backend** (`src-tauri/src/`) — Rust.
-- `lib.rs` — defines `#[tauri::command]` functions and registers them in `invoke_handler`
-- `main.rs` — thin entry point that calls `lib::run()`
-- New commands must be: defined with `#[tauri::command]`, added to `tauri::generate_handler![...]`
+### State
 
-**Capabilities** (`src-tauri/capabilities/default.json`) — controls which Tauri APIs the frontend can use. Add permissions here when using new Tauri plugins.
+`AppState` in `ContentView.swift` is the single `@MainActor ObservableObject` source of truth:
+- Folder URL, photo list, loading flag
+- `selectedIndex: Int` — `didSet` calls `resetTransforms()` on change
+- Transform state: `rotation: Angle`, `flipH/V: Bool`, `zoom: Double`, `zoomMode: ZoomMode`
+- UI flags: `infoOpen`, `slideshowActive`
+- Actions: `navigate(_:)`, `nudgeZoom(_:)`, `setFit()`, `setHundred()`
 
-**Local file serving** — uses a custom `localfile://` URI scheme protocol registered in `lib.rs` via `register_uri_scheme_protocol`. Do NOT use `convertFileSrc` / the Tauri asset protocol; it requires capability scopes and silently fails (images show as broken). Frontend builds URLs as `localfile://localhost${path.split("/").map(encodeURIComponent).join("/")}`.
+`zoom` is a multiplier **relative to fit scale** (1.0 = fit, 2.0 = 2× fit). `StageView` computes `effectiveScale = fitScale * zoom` for `.custom` mode. `ZoomMode` enum (fit / hundred / custom) lives in `StageView.swift` at module scope.
 
-**RAW file display** — `display_path()` in `lib.rs` extracts embedded JPEGs from RAW formats into `$TMPDIR/see_{hash}.jpg` (cached). RAF uses a custom header parser; DNG/NEF/CR2/ARW/etc. use the EXIF `JPEGInterchangeFormat` tag. JPEG/PNG/HEIC/HEIF are served directly.
+### View hierarchy
 
-**Design reference** (`ui-design-guideline/`) — standalone JSX files (not part of the build) used as visual design specs.
+```
+ContentView
+├── VStack
+│   ├── ViewerToolbar        — custom 3-column toolbar (.ultraThinMaterial)
+│   └── HStack
+│       ├── mainColumn
+│       │   ├── StageView        — image display with transforms + pinch zoom
+│       │   ├── FilmstripView    — 64×64 thumbnail strip (.ultraThinMaterial)
+│       │   └── MetaBarView      — File/Resolution/Size/Captured + stars (.ultraThinMaterial)
+│       └── InfoPanelView        — 280px right panel, shown when infoOpen
+└── SlideshowView overlay    — shown when slideshowActive
+```
 
-## TDD workflow
+Keyboard shortcuts (←→ nav, +−fF1iI zoom/info, Esc slideshow) are `.onKeyPress` modifiers on the root VStack. `@FocusState` (`focused`) is set `.onAppear`.
 
-Write tests before implementation. Order per feature:
-1. Write failing test asserting the contract (render output, DOM structure, behavior)
-2. Implement minimum code to pass
-3. Refactor
+### View files
 
-Test stack: **Vitest** + **React Testing Library** + **@testing-library/jest-dom**. Test files colocated: `src/foo.test.tsx` beside `src/foo.tsx`. jsdom environment simulates DOM.
+- `ViewerToolbar.swift` — `ViewerToolbar` (left/center/right sections) + `TBButton` helper. `TBButton` struct: `systemImage`, `help`, `active` (default false), `action` — `active` must come before `action` in property order so trailing closure syntax works for callsites without `active:`.
+- `FilmstripView.swift` — `ScrollViewReader` + `LazyHStack`. `ThumbnailCell` 64×64, index number overlay, lift `offset(y: -2)` on selected, opacity 0.85 non-selected.
+- `MetaBarView.swift` — bottom bar: File / Resolution / Size / Captured cells + star rating + "N of M" counter.
+- `InfoPanelView.swift` — 280px right panel with Camera / File / Location sections, scrollable, border-left.
+- `StageView.swift` — image display. `MagnifyGesture` for pinch-to-zoom (not `MagnificationGesture`).
+- `SlideshowView.swift` — black overlay, tap/Esc closes, loads via `loadDisplayImage`.
 
-For UI components, test behavior not implementation: check rendered output and user interactions, not internal state or CSS classes. For theme switching, assert `document.documentElement` attribute changes. For icons, assert SVG paths render.
+### Image loading pipeline
 
-Rust backend: use `cargo test` inside `src-tauri/`.
+`RAWDecoder.swift` — `loadDisplayImage(url:)` handles all formats:
+1. Non-RAW (jpg/png/heic/webp/tiff): `NSImage(contentsOf:)` directly
+2. RAW (raf/dng/nef/cr2/cr3/arw):
+   - Check `$TMPDIR/see_{hash}.jpg` cache first
+   - RAF: manual byte extraction (magic `"FUJIFILMCCD-RAW "`, offsets at 84/88)
+   - Others: `CGImageSourceCreateThumbnailAtIndex` with `MaxPixelSize: 9000`, require ≥ 1500 px
+   - Fallback: `CIRAWFilter.previewImage` (slow, no `draftMode` in macOS 26 SDK)
+   - Write result to disk cache
 
-## Key constraints
+`ImageScanner.swift` — `scanFolder(_:)` + `buildPhotoMeta(url:)`: reads EXIF via `CGImageSource` / `ImageIO`.
 
-- Vite port is hardcoded to 1420 (`vite.config.ts` + `tauri.conf.json` `devUrl`). Don't change it.
-- App identifier: `viethg.see.app` (used for code signing and app data paths — changing breaks existing installs).
-- `src-tauri/` changes require Rust recompile; frontend changes hot-reload.
-- Tauri dialog commands must use async callback pattern + `spawn_blocking` with mpsc channel — `blocking_pick_folder()` deadlocks on macOS.
-- `scrollTo` is not available in jsdom; use optional chaining (`parent.scrollTo?.(...)`) in Filmstrip to avoid test failures.
+All image I/O runs in `Task.detached` (off main thread) and updates state via `await MainActor.run`.
+
+### Swift concurrency constraints (Xcode 26)
+
+**`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`** is set — all top-level functions are implicitly `@MainActor`. Mark any function doing file I/O or called from `Task.detached` as `nonisolated`. Avoid module-level `let` constants in files with `nonisolated` functions — inline them as locals instead (contradictory Xcode 26 warnings otherwise).
+
+**`import Combine` must be explicit** — `@Published` and `ObservableObject` are not transitively available from SwiftUI in Xcode 26. Always add it to files using those types.
+
+**Text concatenation with `+` is deprecated in macOS 26** — use a single `Text` with string interpolation instead.
+
+## Design reference
+
+`ui-design-guideline/` has JSX files (`viewer.jsx`, `tweaks-panel.jsx`, `icons.jsx`, etc.) used as visual specs. Not compiled, not runnable — reference only. `viewer.jsx` is the primary layout spec.
