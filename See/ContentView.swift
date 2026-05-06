@@ -57,6 +57,24 @@ class AppState: ObservableObject {
         zoomMode = .fit
     }
 
+    func openFile(_ url: URL) {
+        let folder = url.deletingLastPathComponent()
+        folderURL = folder
+        loading = true
+        selectedIndex = 0
+        resetTransforms()
+
+        Task.detached(priority: .userInitiated) {
+            let found = scanFolder(folder)
+            let target = found.firstIndex(where: { $0.path == url }) ?? 0
+            await MainActor.run {
+                self.photos = found
+                self.selectedIndex = target
+                self.loading = false
+            }
+        }
+    }
+
     func openFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -83,7 +101,7 @@ class AppState: ObservableObject {
 // MARK: - Root view
 
 struct ContentView: View {
-    @StateObject private var state = AppState()
+    @ObservedObject var state: AppState
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -100,8 +118,14 @@ struct ContentView: View {
                 }
             }
             .focusable()
+            .focusEffectDisabled()
             .focused($focused)
-            .onAppear { focused = true }
+            .onAppear {
+                focused = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    if state.folderURL == nil { state.openFolder() }
+                }
+            }
             .onKeyPress(.leftArrow)          { state.navigate(-1); return .handled }
             .onKeyPress(.rightArrow)         { state.navigate(+1); return .handled }
             .onKeyPress(KeyEquivalent("+"))  { state.nudgeZoom(+0.1); return .handled }
@@ -170,5 +194,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(state: AppState())
 }
