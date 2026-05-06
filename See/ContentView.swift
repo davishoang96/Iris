@@ -19,8 +19,17 @@ class AppState: ObservableObject {
     @Published var zoomMode: ZoomMode = .fit
 
     @Published var infoOpen: Bool = false
-    @Published var filmstripOpen: Bool = true
     @Published var slideshowActive: Bool = false
+
+    @Published var filmstripOpen: Bool = UserDefaults.standard.object(forKey: "filmstripOpen") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(filmstripOpen, forKey: "filmstripOpen") }
+    }
+    @Published var toolbarVisible: Bool = UserDefaults.standard.object(forKey: "toolbarVisible") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(toolbarVisible, forKey: "toolbarVisible") }
+    }
+    @Published var metaBarVisible: Bool = UserDefaults.standard.object(forKey: "metaBarVisible") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(metaBarVisible, forKey: "metaBarVisible") }
+    }
 
     var selectedPhoto: PhotoMeta? {
         photos.indices.contains(selectedIndex) ? photos[selectedIndex] : nil
@@ -98,6 +107,12 @@ class AppState: ObservableObject {
     }
 }
 
+// MARK: - Focused values
+
+extension FocusedValues {
+    @Entry var appState: AppState? = nil
+}
+
 // MARK: - Root view
 
 struct ContentView: View {
@@ -107,7 +122,9 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                ViewerToolbar(state: state)
+                if state.toolbarVisible {
+                    ViewerToolbar(state: state)
+                }
 
                 HStack(spacing: 0) {
                     mainColumn
@@ -140,6 +157,7 @@ struct ContentView: View {
                 if state.slideshowActive { state.slideshowActive = false; return .handled }
                 return .ignored
             }
+            .focusedValue(\.appState, state)
             .frame(minWidth: 700, minHeight: 500)
 
             if state.slideshowActive, let photo = state.selectedPhoto {
@@ -173,7 +191,9 @@ struct ContentView: View {
                 if state.filmstripOpen {
                     FilmstripView(photos: state.photos, selectedIndex: $state.selectedIndex)
                 }
-                MetaBarView(state: state)
+                if state.metaBarVisible {
+                    MetaBarView(state: state)
+                }
             }
         }
     }

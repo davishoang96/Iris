@@ -1,5 +1,32 @@
 import SwiftUI
 
+struct ViewMenuCommands: Commands {
+    @FocusedValue(\.appState) var appState
+
+    var body: some Commands {
+        CommandMenu("View") {
+            Button(appState?.toolbarVisible == true ? "Hide Toolbar" : "Show Toolbar") {
+                appState?.toolbarVisible.toggle()
+            }
+            .keyboardShortcut("t", modifiers: [.command, .option])
+            .disabled(appState == nil)
+
+            Button(appState?.metaBarVisible == true ? "Hide Status Bar" : "Show Status Bar") {
+                appState?.metaBarVisible.toggle()
+            }
+            .disabled(appState == nil)
+
+            Divider()
+
+            Button(appState?.filmstripOpen == true ? "Hide Filmstrip" : "Show Filmstrip") {
+                appState?.filmstripOpen.toggle()
+            }
+            .keyboardShortcut("f", modifiers: [.command, .option])
+            .disabled(appState == nil)
+        }
+    }
+}
+
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     var appState = AppState()
@@ -27,6 +54,7 @@ struct SeeApp: App {
         .windowStyle(.titleBar)
         .commands {
             CommandGroup(replacing: .newItem) {}
+            ViewMenuCommands()
         }
     }
 }
