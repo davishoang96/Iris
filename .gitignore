@@ -45,3 +45,15 @@ Thumbs.db
 
 # --- Misc ---
 coverage/
+
+# --- Swift / Xcode ---
+swift-migration/See/See.xcodeproj/xcuserdata/
+swift-migration/See/See.xcodeproj/project.xcworkspace/xcuserdata/
+swift-migration/See/*.xcworkspace/xcuserdata/
+swift-migration/See/DerivedData/
+swift-migration/See/.build/
+swift-migration/See/*.resolved
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
