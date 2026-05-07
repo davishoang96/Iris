@@ -3,11 +3,7 @@ import AppKit
 
 struct StageView: View {
     let photo: PhotoMeta
-    @Binding var rotation: Angle
-    @Binding var flipH: Bool
-    @Binding var flipV: Bool
-    @Binding var zoom: Double
-    @Binding var zoomMode: ZoomMode
+    @ObservedObject var transform: TransformViewModel
     var backgroundColor: Color = Color(red: 0.16, green: 0.16, blue: 0.16)
 
     @State private var nsImage: NSImage?
@@ -37,8 +33,8 @@ struct StageView: View {
             lastPan = .zero
             nsImage = await Task.detached { ImageLoadingService.loadDisplayImage(url: photo.path) }.value
         }
-        .onChange(of: zoomMode) {
-            if zoomMode == .fit { panOffset = .zero; lastPan = .zero }
+        .onChange(of: transform.zoomMode) {
+            if transform.zoomMode == .fit { panOffset = .zero; lastPan = .zero }
         }
     }
 
@@ -52,8 +48,8 @@ struct StageView: View {
         Image(nsImage: img)
             .resizable()
             .frame(width: w, height: h)
-            .scaleEffect(x: flipH ? -1 : 1, y: flipV ? -1 : 1)
-            .rotationEffect(rotation)
+            .scaleEffect(x: transform.flipH ? -1 : 1, y: transform.flipV ? -1 : 1)
+            .rotationEffect(transform.rotation)
             .offset(panOffset)
             .shadow(color: .black.opacity(0.5), radius: 40, x: 0, y: 20)
             .gesture(panGesture())
@@ -88,10 +84,10 @@ struct StageView: View {
     }
 
     private func effectiveScale(fit: Double) -> Double {
-        switch zoomMode {
+        switch transform.zoomMode {
         case .fit:     return fit
         case .hundred: return 1.0
-        case .custom:  return fit * zoom
+        case .custom:  return fit * transform.zoom
         }
     }
 
@@ -111,19 +107,18 @@ struct StageView: View {
             .onChanged { v in
                 if !inPinch {
                     inPinch = true
-                    gestureStartZoom = switch zoomMode {
+                    gestureStartZoom = switch transform.zoomMode {
                     case .fit:     1.0
                     case .hundred: 1.0 / fit
-                    case .custom:  zoom
+                    case .custom:  transform.zoom
                     }
                 }
-                zoom = max(0.2, min(8.0, gestureStartZoom * v.magnification))
-                zoomMode = .custom
+                transform.zoom = max(0.2, min(8.0, gestureStartZoom * v.magnification))
+                transform.zoomMode = .custom
             }
             .onEnded { v in
-                zoom = max(0.2, min(8.0, gestureStartZoom * v.magnification))
+                transform.zoom = max(0.2, min(8.0, gestureStartZoom * v.magnification))
                 inPinch = false
             }
     }
 }
-

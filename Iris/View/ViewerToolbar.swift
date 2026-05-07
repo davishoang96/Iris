@@ -2,7 +2,11 @@ import SwiftUI
 import AppKit
 
 struct ViewerToolbar: View {
-    @ObservedObject var state: AppViewModel
+    @ObservedObject var library: LibraryViewModel
+    @ObservedObject var transform: TransformViewModel
+    @ObservedObject var preferences: PreferencesViewModel
+    @Binding var infoOpen: Bool
+    @Binding var slideshowActive: Bool
 
     var body: some View {
         ZStack {
@@ -24,12 +28,12 @@ struct ViewerToolbar: View {
 
     private var leftSection: some View {
         HStack(spacing: 0) {
-            Button(action: state.library.openFolder) {
+            Button(action: library.openFolder) {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                    if let folder = state.library.folderURL {
+                    if let folder = library.folderURL {
                         Text(folder.lastPathComponent)
                             .font(.system(size: 12.5))
                             .foregroundStyle(.secondary)
@@ -41,13 +45,13 @@ struct ViewerToolbar: View {
 
             tbDivider
 
-            TBButton(systemImage: "chevron.left",  help: "Previous  ←") { state.library.navigate(-1) }
-                .disabled(!state.library.hasPhotos)
-            TBButton(systemImage: "chevron.right", help: "Next  →")     { state.library.navigate(+1) }
-                .disabled(!state.library.hasPhotos)
+            TBButton(systemImage: "chevron.left",  help: "Previous  ←") { library.navigate(-1) }
+                .disabled(!library.hasPhotos)
+            TBButton(systemImage: "chevron.right", help: "Next  →")     { library.navigate(+1) }
+                .disabled(!library.hasPhotos)
 
-            if state.library.hasPhotos {
-                Text("\(state.library.selectedIndex + 1)  /  \(state.library.photos.count)")
+            if library.hasPhotos {
+                Text("\(library.selectedIndex + 1)  /  \(library.photos.count)")
                     .font(.system(size: 12).monospacedDigit())
                     .foregroundStyle(.tertiary)
                     .padding(.leading, 4)
@@ -59,7 +63,7 @@ struct ViewerToolbar: View {
 
     @ViewBuilder
     private var centerSection: some View {
-        if let photo = state.library.selectedPhoto {
+        if let photo = library.selectedPhoto {
             VStack(spacing: 1) {
                 Text(photo.nameWithoutExtension)
                     .font(.system(size: 13, weight: .semibold))
@@ -78,22 +82,22 @@ struct ViewerToolbar: View {
 
     private var rightSection: some View {
         HStack(spacing: 0) {
-            TBButton(systemImage: "rotate.left",  help: "Rotate Left  ⌘L") { state.transform.rotation -= .degrees(90) }
-                .disabled(!state.library.hasPhotos)
-            TBButton(systemImage: "rotate.right", help: "Rotate Right  ⌘R") { state.transform.rotation += .degrees(90) }
-                .disabled(!state.library.hasPhotos)
+            TBButton(systemImage: "rotate.left",  help: "Rotate Left  ⌘L")  { transform.rotation -= .degrees(90) }
+                .disabled(!library.hasPhotos)
+            TBButton(systemImage: "rotate.right", help: "Rotate Right  ⌘R") { transform.rotation += .degrees(90) }
+                .disabled(!library.hasPhotos)
 
             TBButton(systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right",
-                     help: "Flip Horizontal") { state.transform.flipH.toggle() }
-                .disabled(!state.library.hasPhotos)
+                     help: "Flip Horizontal") { transform.flipH.toggle() }
+                .disabled(!library.hasPhotos)
             TBButton(systemImage: "arrow.up.and.down.righttriangle.up.righttriangle.down",
-                     help: "Flip Vertical") { state.transform.flipV.toggle() }
-                .disabled(!state.library.hasPhotos)
+                     help: "Flip Vertical") { transform.flipV.toggle() }
+                .disabled(!library.hasPhotos)
 
             tbDivider
 
-            TBButton(systemImage: "minus.magnifyingglass", help: "Zoom Out  −") { state.transform.nudgeZoom(-0.1) }
-                .disabled(!state.library.hasPhotos)
+            TBButton(systemImage: "minus.magnifyingglass", help: "Zoom Out  −") { transform.nudgeZoom(-0.1) }
+                .disabled(!library.hasPhotos)
 
             Text(zoomLabel)
                 .font(.system(size: 11.5, design: .monospaced).monospacedDigit())
@@ -101,47 +105,47 @@ struct ViewerToolbar: View {
                 .frame(minWidth: 40)
                 .multilineTextAlignment(.center)
 
-            TBButton(systemImage: "plus.magnifyingglass",  help: "Zoom In  +") { state.transform.nudgeZoom(+0.1) }
-                .disabled(!state.library.hasPhotos)
+            TBButton(systemImage: "plus.magnifyingglass", help: "Zoom In  +") { transform.nudgeZoom(+0.1) }
+                .disabled(!library.hasPhotos)
 
             TBButton(systemImage: "arrow.up.left.and.arrow.down.right",
                      help: "Fit to Window  F",
-                     active: state.transform.zoomMode == .fit,
-                     action: { state.transform.setFit() })
-                .disabled(!state.library.hasPhotos)
+                     active: transform.zoomMode == .fit,
+                     action: { transform.setFit() })
+                .disabled(!library.hasPhotos)
 
             TBButton(systemImage: "1.square",
                      help: "Actual Size  1",
-                     active: state.transform.zoomMode == .hundred,
-                     action: { state.transform.setHundred() })
-                .disabled(!state.library.hasPhotos)
+                     active: transform.zoomMode == .hundred,
+                     action: { transform.setHundred() })
+                .disabled(!library.hasPhotos)
 
             tbDivider
 
-            TBButton(systemImage: "play.fill", help: "Slideshow") { state.slideshowActive = true }
-                .disabled(!state.library.hasPhotos)
+            TBButton(systemImage: "play.fill", help: "Slideshow") { slideshowActive = true }
+                .disabled(!library.hasPhotos)
 
             tbDivider
 
             TBButton(systemImage: "filmstrip",
                      help: "Toggle Filmstrip",
-                     active: state.preferences.filmstripOpen,
-                     action: { state.preferences.filmstripOpen.toggle() })
-                .disabled(!state.library.hasPhotos)
+                     active: preferences.filmstripOpen,
+                     action: { preferences.filmstripOpen.toggle() })
+                .disabled(!library.hasPhotos)
 
             TBButton(systemImage: "info.circle",
                      help: "Info Panel  I",
-                     active: state.infoOpen,
-                     action: { state.infoOpen.toggle() })
-                .disabled(!state.library.hasPhotos)
+                     active: infoOpen,
+                     action: { infoOpen.toggle() })
+                .disabled(!library.hasPhotos)
         }
     }
 
     private var zoomLabel: String {
-        switch state.transform.zoomMode {
+        switch transform.zoomMode {
         case .fit:     return "Fit"
         case .hundred: return "1:1"
-        case .custom:  return "\(Int((state.transform.zoom * 100).rounded()))%"
+        case .custom:  return "\(Int((transform.zoom * 100).rounded()))%"
         }
     }
 

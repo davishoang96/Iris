@@ -2,30 +2,29 @@ import SwiftUI
 import AppKit
 
 struct FilmstripView: View {
-    let photos: [PhotoMeta]
-    @Binding var selectedIndex: Int
+    @ObservedObject var library: LibraryViewModel
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 4) {
-                    ForEach(photos.indices, id: \.self) { i in
-                        ThumbnailCell(photo: photos[i], index: i, isSelected: i == selectedIndex)
+                    ForEach(library.photos.indices, id: \.self) { i in
+                        ThumbnailCell(photo: library.photos[i], index: i, isSelected: i == library.selectedIndex)
                             .id(i)
-                            .onTapGesture { selectedIndex = i }
+                            .onTapGesture { library.selectedIndex = i }
                     }
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 10)
                 .padding(.bottom, 12)
             }
-            .onChange(of: selectedIndex) { _, idx in
+            .onChange(of: library.selectedIndex) { _, idx in
                 withAnimation(.easeInOut(duration: 0.15)) {
                     proxy.scrollTo(idx, anchor: .center)
                 }
             }
             .onAppear {
-                proxy.scrollTo(selectedIndex, anchor: .center)
+                proxy.scrollTo(library.selectedIndex, anchor: .center)
             }
         }
         .frame(height: 88)
@@ -83,4 +82,3 @@ private struct ThumbnailCell: View {
         }
     }
 }
-

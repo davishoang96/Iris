@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 
 // MARK: - Focused values
 
@@ -19,7 +18,13 @@ struct ContentView: View {
 
             VStack(spacing: 0) {
                 if state.preferences.toolbarVisible {
-                    ViewerToolbar(state: state)
+                    ViewerToolbar(
+                        library: state.library,
+                        transform: state.transform,
+                        preferences: state.preferences,
+                        infoOpen: $state.infoOpen,
+                        slideshowActive: $state.slideshowActive
+                    )
                 }
 
                 HStack(spacing: 0) {
@@ -77,30 +82,19 @@ struct ContentView: View {
                 if let photo = state.library.selectedPhoto {
                     StageView(
                         photo: photo,
-                        rotation: Binding(get: { state.transform.rotation },
-                                          set: { state.transform.rotation = $0 }),
-                        flipH:    Binding(get: { state.transform.flipH },
-                                          set: { state.transform.flipH = $0 }),
-                        flipV:    Binding(get: { state.transform.flipV },
-                                          set: { state.transform.flipV = $0 }),
-                        zoom:     Binding(get: { state.transform.zoom },
-                                          set: { state.transform.zoom = $0 }),
-                        zoomMode: Binding(get: { state.transform.zoomMode },
-                                          set: { state.transform.zoomMode = $0 }),
+                        transform: state.transform,
                         backgroundColor: state.preferences.theme.stageBackground
                     )
                 }
                 if state.preferences.filmstripOpen {
-                    FilmstripView(
-                        photos: state.library.photos,
-                        selectedIndex: Binding(
-                            get: { state.library.selectedIndex },
-                            set: { state.library.selectedIndex = $0 }
-                        )
-                    )
+                    FilmstripView(library: state.library)
                 }
                 if state.preferences.metaBarVisible {
-                    MetaBarView(state: state)
+                    MetaBarView(
+                        photo: state.library.selectedPhoto,
+                        index: state.library.selectedIndex,
+                        total: state.library.photos.count
+                    )
                 }
             }
         }
