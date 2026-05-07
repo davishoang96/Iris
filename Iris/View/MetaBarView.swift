@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct MetaBarView: View {
-    @ObservedObject var state: AppState
+    @ObservedObject var state: AppViewModel
 
     var body: some View {
         HStack(spacing: 28) {
-            if let photo = state.selectedPhoto {
+            if let photo = state.library.selectedPhoto {
                 metaCell(label: "File", value: photo.name, mono: true)
                 if photo.width > 0 {
                     metaCell(label: "Resolution", value: "\(photo.width) × \(photo.height)", mono: true)
@@ -20,14 +20,14 @@ struct MetaBarView: View {
 
             Spacer(minLength: 0)
 
-            if state.hasPhotos {
+            if state.library.hasPhotos {
                 HStack(spacing: 12) {
-                    if let photo = state.selectedPhoto {
+                    if let photo = state.library.selectedPhoto {
                         starRating(photo.rating)
                         Color.primary.opacity(0.18)
                             .frame(width: 1, height: 16)
                     }
-                    Text("\(state.selectedIndex + 1) of \(state.photos.count)")
+                    Text("\(state.library.selectedIndex + 1) of \(state.library.photos.count)")
                         .font(.system(size: 11.5, design: .monospaced))
                         .foregroundStyle(.tertiary)
                 }

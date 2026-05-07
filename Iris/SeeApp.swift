@@ -1,44 +1,44 @@
 import SwiftUI
 
 struct ViewMenuCommands: Commands {
-    @FocusedValue(\.appState) var appState
+    @FocusedValue(\.appViewModel) var appViewModel
 
     var body: some Commands {
         CommandMenu("View") {
-            Button(appState?.toolbarVisible == true ? "Hide Toolbar" : "Show Toolbar") {
-                appState?.toolbarVisible.toggle()
+            Button(appViewModel?.preferences.toolbarVisible == true ? "Hide Toolbar" : "Show Toolbar") {
+                appViewModel?.preferences.toolbarVisible.toggle()
             }
             .keyboardShortcut("t", modifiers: [.command, .option])
-            .disabled(appState == nil)
+            .disabled(appViewModel == nil)
 
-            Button(appState?.metaBarVisible == true ? "Hide Status Bar" : "Show Status Bar") {
-                appState?.metaBarVisible.toggle()
+            Button(appViewModel?.preferences.metaBarVisible == true ? "Hide Status Bar" : "Show Status Bar") {
+                appViewModel?.preferences.metaBarVisible.toggle()
             }
-            .disabled(appState == nil)
+            .disabled(appViewModel == nil)
 
             Divider()
 
-            Button(appState?.filmstripOpen == true ? "Hide Filmstrip" : "Show Filmstrip") {
-                appState?.filmstripOpen.toggle()
+            Button(appViewModel?.preferences.filmstripOpen == true ? "Hide Filmstrip" : "Show Filmstrip") {
+                appViewModel?.preferences.filmstripOpen.toggle()
             }
             .keyboardShortcut("f", modifiers: [.command, .option])
-            .disabled(appState == nil)
+            .disabled(appViewModel == nil)
         }
     }
 }
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var appState = AppState()
+    var appVM = AppViewModel()
 
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
-        appState.openFile(url)
+        appVM.library.openFile(url)
     }
 
     func application(_ sender: NSApplication, openFiles filenames: [String]) {
         guard let path = filenames.first else { return }
-        appState.openFile(URL(fileURLWithPath: path))
+        appVM.library.openFile(URL(fileURLWithPath: path))
         sender.reply(toOpenOrPrint: .success)
     }
 }
@@ -49,7 +49,7 @@ struct SeeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(state: appDelegate.appState)
+            ContentView(state: appDelegate.appVM)
         }
         .windowStyle(.titleBar)
         .commands {
@@ -58,7 +58,7 @@ struct SeeApp: App {
         }
 
         Settings {
-            SettingsView(state: appDelegate.appState)
+            SettingsView(preferences: appDelegate.appVM.preferences)
         }
     }
 }

@@ -1,132 +1,31 @@
 import SwiftUI
 import Combine
 
-@MainActor
-class AppState: ObservableObject {
-    @Published var folderURL: URL? = nil
-    @Published var photos: [PhotoMeta] = []
-    @Published var loading = false
-
-    @Published var selectedIndex: Int = 0 {
-        didSet { if oldValue != selectedIndex { resetTransforms() } }
-    }
-
-    @Published var rotation: Angle = .zero
-    @Published var flipH: Bool = false
-    @Published var flipV: Bool = false
-    @Published var zoom: Double = 1.0
-    @Published var zoomMode: ZoomMode = .fit
-
-    @Published var infoOpen: Bool = false
-    @Published var slideshowActive: Bool = false
-
-    @Published var filmstripOpen: Bool = UserDefaults.standard.object(forKey: "filmstripOpen") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(filmstripOpen, forKey: "filmstripOpen") }
-    }
-    @Published var toolbarVisible: Bool = UserDefaults.standard.object(forKey: "toolbarVisible") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(toolbarVisible, forKey: "toolbarVisible") }
-    }
-    @Published var metaBarVisible: Bool = UserDefaults.standard.object(forKey: "metaBarVisible") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(metaBarVisible, forKey: "metaBarVisible") }
-    }
-    @Published var theme: AppTheme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "appTheme") ?? "") ?? .darkGrey {
-        didSet { UserDefaults.standard.set(theme.rawValue, forKey: "appTheme") }
-    }
-
-    var selectedPhoto: PhotoMeta? {
-        photos.indices.contains(selectedIndex) ? photos[selectedIndex] : nil
-    }
-
-    var hasPhotos: Bool { !photos.isEmpty }
-
-    func navigate(_ delta: Int) {
-        guard hasPhotos else { return }
-        selectedIndex = (selectedIndex + delta + photos.count) % photos.count
-    }
-
-    func nudgeZoom(_ delta: Double) {
-        if zoomMode != .custom { zoom = 1.0 }
-        zoom = max(0.2, min(8.0, zoom + delta))
-        zoomMode = .custom
-    }
-
-    func setFit() {
-        zoomMode = .fit
-        zoom = 1.0
-    }
-
-    func setHundred() {
-        zoomMode = .hundred
-        zoom = 1.0
-    }
-
-    func resetTransforms() {
-        rotation = .zero
-        flipH = false
-        flipV = false
-        zoom = 1.0
-        zoomMode = .fit
-    }
-
-    func openFile(_ url: URL) {
-        let folder = url.deletingLastPathComponent()
-        folderURL = folder
-        loading = true
-        selectedIndex = 0
-        resetTransforms()
-
-        Task.detached(priority: .userInitiated) {
-            let found = PhotoLibraryService.scan(folder: folder)
-            let target = found.firstIndex(where: { $0.path == url }) ?? 0
-            await MainActor.run {
-                self.photos = found
-                self.selectedIndex = target
-                self.loading = false
-            }
-        }
-    }
-
-    func openFolder() {
-        guard let url = PhotoLibraryService.presentFolderPanel() else { return }
-        folderURL = url
-        loading = true
-        selectedIndex = 0
-
-        Task.detached(priority: .userInitiated) {
-            let found = PhotoLibraryService.scan(folder: url)
-            await MainActor.run {
-                self.photos = found
-                self.loading = false
-            }
-        }
-    }
-}
-
 // MARK: - Focused values
 
 extension FocusedValues {
-    @Entry var appState: AppState? = nil
+    @Entry var appViewModel: AppViewModel? = nil
 }
 
 // MARK: - Root view
 
 struct ContentView: View {
-    @ObservedObject var state: AppState
+    @ObservedObject var state: AppViewModel
     @FocusState private var focused: Bool
 
     var body: some View {
         ZStack {
-            state.theme.windowBackground.ignoresSafeArea()
+            state.preferences.theme.windowBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if state.toolbarVisible {
+                if state.preferences.toolbarVisible {
                     ViewerToolbar(state: state)
                 }
 
                 HStack(spacing: 0) {
                     mainColumn
 
-                    if state.infoOpen, let photo = state.selectedPhoto {
+                    if state.infoOpen, let photo = state.library.selectedPhoto {
                         InfoPanelView(photo: photo)
                     }
                 }
@@ -137,27 +36,27 @@ struct ContentView: View {
             .onAppear {
                 focused = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    if state.folderURL == nil { state.openFolder() }
+                    if state.library.folderURL == nil { state.library.openFolder() }
                 }
             }
-            .onKeyPress(.leftArrow)          { state.navigate(-1); return .handled }
-            .onKeyPress(.rightArrow)         { state.navigate(+1); return .handled }
-            .onKeyPress(KeyEquivalent("+"))  { state.nudgeZoom(+0.1); return .handled }
-            .onKeyPress(KeyEquivalent("="))  { state.nudgeZoom(+0.1); return .handled }
-            .onKeyPress(KeyEquivalent("-"))  { state.nudgeZoom(-0.1); return .handled }
-            .onKeyPress(KeyEquivalent("f"))  { state.setFit(); return .handled }
-            .onKeyPress(KeyEquivalent("F"))  { state.setFit(); return .handled }
-            .onKeyPress(KeyEquivalent("1"))  { state.setHundred(); return .handled }
+            .onKeyPress(.leftArrow)          { state.library.navigate(-1); return .handled }
+            .onKeyPress(.rightArrow)         { state.library.navigate(+1); return .handled }
+            .onKeyPress(KeyEquivalent("+"))  { state.transform.nudgeZoom(+0.1); return .handled }
+            .onKeyPress(KeyEquivalent("="))  { state.transform.nudgeZoom(+0.1); return .handled }
+            .onKeyPress(KeyEquivalent("-"))  { state.transform.nudgeZoom(-0.1); return .handled }
+            .onKeyPress(KeyEquivalent("f"))  { state.transform.setFit(); return .handled }
+            .onKeyPress(KeyEquivalent("F"))  { state.transform.setFit(); return .handled }
+            .onKeyPress(KeyEquivalent("1"))  { state.transform.setHundred(); return .handled }
             .onKeyPress(KeyEquivalent("i"))  { state.infoOpen.toggle(); return .handled }
             .onKeyPress(KeyEquivalent("I"))  { state.infoOpen.toggle(); return .handled }
             .onKeyPress(.escape) {
                 if state.slideshowActive { state.slideshowActive = false; return .handled }
                 return .ignored
             }
-            .focusedValue(\.appState, state)
+            .focusedValue(\.appViewModel, state)
             .frame(minWidth: 700, minHeight: 500)
 
-            if state.slideshowActive, let photo = state.selectedPhoto {
+            if state.slideshowActive, let photo = state.library.selectedPhoto {
                 SlideshowView(photo: photo) { state.slideshowActive = false }
                     .zIndex(999)
             }
@@ -168,28 +67,39 @@ struct ContentView: View {
 
     @ViewBuilder
     private var mainColumn: some View {
-        if state.loading {
+        if state.library.loading {
             ProgressView("Scanning…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if state.photos.isEmpty {
+        } else if state.library.photos.isEmpty {
             emptyState
         } else {
             VStack(spacing: 0) {
-                if let photo = state.selectedPhoto {
+                if let photo = state.library.selectedPhoto {
                     StageView(
                         photo: photo,
-                        rotation: $state.rotation,
-                        flipH: $state.flipH,
-                        flipV: $state.flipV,
-                        zoom: $state.zoom,
-                        zoomMode: $state.zoomMode,
-                        backgroundColor: state.theme.stageBackground
+                        rotation: Binding(get: { state.transform.rotation },
+                                          set: { state.transform.rotation = $0 }),
+                        flipH:    Binding(get: { state.transform.flipH },
+                                          set: { state.transform.flipH = $0 }),
+                        flipV:    Binding(get: { state.transform.flipV },
+                                          set: { state.transform.flipV = $0 }),
+                        zoom:     Binding(get: { state.transform.zoom },
+                                          set: { state.transform.zoom = $0 }),
+                        zoomMode: Binding(get: { state.transform.zoomMode },
+                                          set: { state.transform.zoomMode = $0 }),
+                        backgroundColor: state.preferences.theme.stageBackground
                     )
                 }
-                if state.filmstripOpen {
-                    FilmstripView(photos: state.photos, selectedIndex: $state.selectedIndex)
+                if state.preferences.filmstripOpen {
+                    FilmstripView(
+                        photos: state.library.photos,
+                        selectedIndex: Binding(
+                            get: { state.library.selectedIndex },
+                            set: { state.library.selectedIndex = $0 }
+                        )
+                    )
                 }
-                if state.metaBarVisible {
+                if state.preferences.metaBarVisible {
                     MetaBarView(state: state)
                 }
             }
@@ -204,7 +114,7 @@ struct ContentView: View {
             Text("Open a folder to get started")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-            Button("Open Folder", action: state.openFolder)
+            Button("Open Folder", action: state.library.openFolder)
                 .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -212,5 +122,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(state: AppState())
+    ContentView(state: AppViewModel())
 }
