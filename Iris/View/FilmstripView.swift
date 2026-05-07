@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import ImageIO
 
 struct FilmstripView: View {
     let photos: [PhotoMeta]
@@ -80,24 +79,8 @@ private struct ThumbnailCell: View {
         .offset(y: isSelected ? -2 : 0)
         .animation(.easeOut(duration: 0.15), value: isSelected)
         .task(id: photo.id) {
-            thumb = await loadThumbnail(url: photo.path)
+            thumb = await ImageLoadingService.loadThumbnail(url: photo.path)
         }
     }
 }
 
-// MARK: - Thumbnail loading
-
-nonisolated private func loadThumbnail(url: URL) async -> NSImage? {
-    await Task.detached {
-        let opts: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageIfAbsent: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceThumbnailMaxPixelSize: 200,
-        ]
-        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let cgImg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary)
-        else { return nil as NSImage? }
-        return NSImage(cgImage: cgImg,
-                       size: NSSize(width: cgImg.width, height: cgImg.height))
-    }.value
-}

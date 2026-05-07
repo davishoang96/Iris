@@ -35,7 +35,7 @@ struct StageView: View {
             nsImage = nil
             panOffset = .zero
             lastPan = .zero
-            nsImage = await loadImage(from: photo.path)
+            nsImage = await Task.detached { ImageLoadingService.loadDisplayImage(url: photo.path) }.value
         }
         .onChange(of: zoomMode) {
             if zoomMode == .fit { panOffset = .zero; lastPan = .zero }
@@ -127,6 +127,3 @@ struct StageView: View {
     }
 }
 
-private func loadImage(from url: URL) async -> NSImage? {
-    await Task.detached { loadDisplayImage(url: url) }.value
-}

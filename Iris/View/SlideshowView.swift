@@ -36,7 +36,7 @@ struct SlideshowView: View {
         .onKeyPress(.escape) { onClose(); return .handled }
         .focusable()
         .task(id: photo.id) {
-            nsImage = await Task.detached { loadDisplayImage(url: photo.path) }.value
+            nsImage = await Task.detached { ImageLoadingService.loadDisplayImage(url: photo.path) }.value
         }
     }
 }

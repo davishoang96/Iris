@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 import Combine
 
 @MainActor
@@ -77,7 +76,7 @@ class AppState: ObservableObject {
         resetTransforms()
 
         Task.detached(priority: .userInitiated) {
-            let found = scanFolder(folder)
+            let found = PhotoLibraryService.scan(folder: folder)
             let target = found.firstIndex(where: { $0.path == url }) ?? 0
             await MainActor.run {
                 self.photos = found
@@ -88,20 +87,13 @@ class AppState: ObservableObject {
     }
 
     func openFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Open"
-        panel.message = "Choose a folder of photos"
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = PhotoLibraryService.presentFolderPanel() else { return }
         folderURL = url
         loading = true
         selectedIndex = 0
 
         Task.detached(priority: .userInitiated) {
-            let found = scanFolder(url)
+            let found = PhotoLibraryService.scan(folder: url)
             await MainActor.run {
                 self.photos = found
                 self.loading = false
