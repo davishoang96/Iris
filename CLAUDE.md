@@ -5,22 +5,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Build (must run from the See/ directory containing See.xcodeproj)
+# Build (must run from the See/ directory containing Iris.xcodeproj)
 cd /Users/davis/repos/See
-xcodebuild -project See.xcodeproj -scheme See -destination 'platform=macOS' build
+xcodebuild -project Iris.xcodeproj -scheme Iris -destination 'platform=macOS' build
 
 # Build — errors/result only
-xcodebuild -project See.xcodeproj -scheme See -destination 'platform=macOS' build 2>&1 | grep -E "error:|Build succeeded|Build FAILED" | grep -v appintents
+xcodebuild -project Iris.xcodeproj -scheme Iris -destination 'platform=macOS' build 2>&1 | grep -E "error:|Build succeeded|Build FAILED" | grep -v appintents
 
 # Run
-open ~/Library/Developer/Xcode/DerivedData/See-*/Build/Products/Debug/See.app
+open ~/Library/Developer/Xcode/DerivedData/See-*/Build/Products/Debug/Iris.app
 ```
 
 No tests exist. `ui-design-guideline/` contains standalone JSX reference files (not part of the build, not runnable).
 
 ## Architecture
 
-macOS SwiftUI app. Single Xcode project at `/Users/davis/repos/See/See.xcodeproj`, sources in `See/`.
+macOS SwiftUI app. Single Xcode project at `/Users/davis/repos/See/Iris.xcodeproj`, sources in `See/`.
 
 **`PBXFileSystemSynchronizedRootGroup`** — Xcode 16+ feature. Any `.swift` file added to `See/` is automatically compiled. No pbxproj edits needed.
 

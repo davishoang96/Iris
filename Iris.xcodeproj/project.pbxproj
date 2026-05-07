@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		72E96F532FAB13FD007AE913 /* See.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = See.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		72E96F532FAB13FD007AE913 /* See.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = See.app; path = Iris.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		72E96F552FAB13FD007AE913 /* See */ = {
+		72E96F552FAB13FD007AE913 /* Iris */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = See;
+			path = Iris;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		72E96F4A2FAB13FC007AE913 = {
 			isa = PBXGroup;
 			children = (
-				72E96F552FAB13FD007AE913 /* See */,
+				72E96F552FAB13FD007AE913 /* Iris */,
 				72E96F542FAB13FD007AE913 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		72E96F522FAB13FD007AE913 /* See */ = {
+		72E96F522FAB13FD007AE913 /* Iris */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 72E96F5E2FAB13FE007AE913 /* Build configuration list for PBXNativeTarget "See" */;
+			buildConfigurationList = 72E96F5E2FAB13FE007AE913 /* Build configuration list for PBXNativeTarget "Iris" */;
 			buildPhases = (
 				72E96F4F2FAB13FD007AE913 /* Sources */,
 				72E96F502FAB13FD007AE913 /* Frameworks */,
@@ -61,12 +61,12 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				72E96F552FAB13FD007AE913 /* See */,
+				72E96F552FAB13FD007AE913 /* Iris */,
 			);
-			name = See;
+			name = Iris;
 			packageProductDependencies = (
 			);
-			productName = See;
+			productName = Iris;
 			productReference = 72E96F532FAB13FD007AE913 /* See.app */;
 			productType = "com.apple.product-type.application";
 		};
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 72E96F4E2FAB13FD007AE913 /* Build configuration list for PBXProject "See" */;
+			buildConfigurationList = 72E96F4E2FAB13FD007AE913 /* Build configuration list for PBXProject "Iris" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				72E96F522FAB13FD007AE913 /* See */,
+				72E96F522FAB13FD007AE913 /* Iris */,
 			);
 		};
 /* End PBXProject section */
@@ -255,13 +255,13 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = See/Info.plist;
+				INFOPLIST_FILE = Iris/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.viethg.See.See;
+				PRODUCT_BUNDLE_IDENTIFIER = com.viethg.See.Iris;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -285,13 +285,13 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = See/Info.plist;
+				INFOPLIST_FILE = Iris/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.viethg.See.See;
+				PRODUCT_BUNDLE_IDENTIFIER = com.viethg.See.Iris;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -306,7 +306,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		72E96F4E2FAB13FD007AE913 /* Build configuration list for PBXProject "See" */ = {
+		72E96F4E2FAB13FD007AE913 /* Build configuration list for PBXProject "Iris" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				72E96F5C2FAB13FE007AE913 /* Debug */,
@@ -315,7 +315,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		72E96F5E2FAB13FE007AE913 /* Build configuration list for PBXNativeTarget "See" */ = {
+		72E96F5E2FAB13FE007AE913 /* Build configuration list for PBXNativeTarget "Iris" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				72E96F5F2FAB13FE007AE913 /* Debug */,

@@ -1,8 +1,6 @@
 import SwiftUI
 import AppKit
 
-enum ZoomMode: Hashable { case fit, hundred, custom }
-
 struct StageView: View {
     let photo: PhotoMeta
     @Binding var rotation: Angle
