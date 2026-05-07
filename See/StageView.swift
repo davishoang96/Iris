@@ -10,6 +10,7 @@ struct StageView: View {
     @Binding var flipV: Bool
     @Binding var zoom: Double
     @Binding var zoomMode: ZoomMode
+    var backgroundColor: Color = Color(red: 0.16, green: 0.16, blue: 0.16)
 
     @State private var nsImage: NSImage?
     @State private var panOffset: CGSize = .zero
@@ -20,7 +21,7 @@ struct StageView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Color(red: 0.16, green: 0.16, blue: 0.16)
+                backgroundColor
 
                 if let img = nsImage {
                     stageImage(img, geo: geo)

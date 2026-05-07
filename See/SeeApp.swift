@@ -56,5 +56,9 @@ struct SeeApp: App {
             CommandGroup(replacing: .newItem) {}
             ViewMenuCommands()
         }
+
+        Settings {
+            SettingsView(state: appDelegate.appState)
+        }
     }
 }

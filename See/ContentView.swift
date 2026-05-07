@@ -2,6 +2,25 @@ import SwiftUI
 import AppKit
 import Combine
 
+enum AppTheme: String, CaseIterable, Codable {
+    case darkGrey = "Dark Grey"
+    case amoled   = "AMOLED"
+
+    var stageBackground: Color {
+        switch self {
+        case .darkGrey: Color(red: 0.16, green: 0.16, blue: 0.16)
+        case .amoled:   .black
+        }
+    }
+
+    var windowBackground: Color {
+        switch self {
+        case .darkGrey: .clear
+        case .amoled:   .black
+        }
+    }
+}
+
 @MainActor
 class AppState: ObservableObject {
     @Published var folderURL: URL? = nil
@@ -29,6 +48,9 @@ class AppState: ObservableObject {
     }
     @Published var metaBarVisible: Bool = UserDefaults.standard.object(forKey: "metaBarVisible") as? Bool ?? true {
         didSet { UserDefaults.standard.set(metaBarVisible, forKey: "metaBarVisible") }
+    }
+    @Published var theme: AppTheme = AppTheme(rawValue: UserDefaults.standard.string(forKey: "appTheme") ?? "") ?? .darkGrey {
+        didSet { UserDefaults.standard.set(theme.rawValue, forKey: "appTheme") }
     }
 
     var selectedPhoto: PhotoMeta? {
@@ -121,6 +143,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
+            state.theme.windowBackground.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 if state.toolbarVisible {
                     ViewerToolbar(state: state)
@@ -185,7 +209,8 @@ struct ContentView: View {
                         flipH: $state.flipH,
                         flipV: $state.flipV,
                         zoom: $state.zoom,
-                        zoomMode: $state.zoomMode
+                        zoomMode: $state.zoomMode,
+                        backgroundColor: state.theme.stageBackground
                     )
                 }
                 if state.filmstripOpen {
