@@ -5,12 +5,6 @@ struct ViewMenuCommands: Commands {
 
     var body: some Commands {
         CommandMenu("View") {
-            Button(appViewModel?.preferences.toolbarVisible == true ? "Hide Toolbar" : "Show Toolbar") {
-                appViewModel?.preferences.toolbarVisible.toggle()
-            }
-            .keyboardShortcut("t", modifiers: [.command, .option])
-            .disabled(appViewModel == nil)
-
             Button(appViewModel?.preferences.metaBarVisible == true ? "Hide Status Bar" : "Show Status Bar") {
                 appViewModel?.preferences.metaBarVisible.toggle()
             }
@@ -51,7 +45,7 @@ struct SeeApp: App {
         WindowGroup {
             ContentView(state: appDelegate.appVM)
         }
-        .windowStyle(.titleBar)
+        .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(replacing: .newItem) {}
             ViewMenuCommands()

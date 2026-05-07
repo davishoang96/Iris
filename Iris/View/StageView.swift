@@ -53,27 +53,7 @@ struct StageView: View {
             .offset(panOffset)
             .shadow(color: .black.opacity(0.5), radius: 40, x: 0, y: 20)
             .gesture(panGesture())
-            .gesture(pinchGesture(fit: fit))
-
-        // dimension badge
-        if img.size.width > 0 {
-            let px = photo.width > 0 ? photo.width : Int(img.size.width)
-            let py = photo.height > 0 ? photo.height : Int(img.size.height)
-            VStack {
-                HStack {
-                    Spacer()
-                    Text("\(px) × \(py)")
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.5))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.black.opacity(0.4))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .padding(12)
-                }
-                Spacer()
-            }
-        }
+            .gesture(pinchGesture(fit: fit))        
     }
 
     private func fitScale(img: NSImage, container: CGSize) -> Double {

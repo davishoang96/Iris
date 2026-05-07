@@ -8,6 +8,8 @@ struct ViewerToolbar: View {
     @Binding var infoOpen: Bool
     @Binding var slideshowActive: Bool
 
+    @State private var leadingClearance: CGFloat = 80
+
     var body: some View {
         ZStack {
             HStack(spacing: 0) {
@@ -17,11 +19,21 @@ struct ViewerToolbar: View {
                 Spacer(minLength: 12)
                 rightSection
             }
-            .padding(.horizontal, 14)
+            .padding(.leading, leadingClearance)
+            .padding(.trailing, 14)
         }
         .frame(height: 52)
         .background(.ultraThinMaterial)
         .overlay(alignment: .bottom) { Divider() }
+        .onAppear { measureTrafficLights() }
+    }
+
+    private func measureTrafficLights() {
+        guard let window = NSApplication.shared.windows.first,
+              let zoomBtn = window.standardWindowButton(.zoomButton),
+              let contentView = window.contentView else { return }
+        let frame = zoomBtn.convert(zoomBtn.bounds, to: contentView)
+        leadingClearance = frame.maxX + 12
     }
 
     // MARK: Left — folder + nav + counter
@@ -45,9 +57,9 @@ struct ViewerToolbar: View {
 
             tbDivider
 
-            TBButton(systemImage: "chevron.left",  help: "Previous  ←") { library.navigate(-1) }
+            TBButton(systemImage: "chevron.left", help: "Previous  ←") { library.navigate(-1) }
                 .disabled(!library.hasPhotos)
-            TBButton(systemImage: "chevron.right", help: "Next  →")     { library.navigate(+1) }
+            TBButton(systemImage: "chevron.right", help: "Next  →")    { library.navigate(+1) }
                 .disabled(!library.hasPhotos)
 
             if library.hasPhotos {
@@ -69,12 +81,16 @@ struct ViewerToolbar: View {
                     .font(.system(size: 13, weight: .semibold))
                     .tracking(-0.1)
                     .lineLimit(1)
+                    .truncationMode(.middle)
                 Text(photo.name)
                     .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
+                    .truncationMode(.middle)
             }
             .multilineTextAlignment(.center)
+            .frame(minWidth: 60, maxWidth: 260)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -86,7 +102,6 @@ struct ViewerToolbar: View {
                 .disabled(!library.hasPhotos)
             TBButton(systemImage: "rotate.right", help: "Rotate Right  ⌘R") { transform.rotation += .degrees(90) }
                 .disabled(!library.hasPhotos)
-
             TBButton(systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right",
                      help: "Flip Horizontal") { transform.flipH.toggle() }
                 .disabled(!library.hasPhotos)
@@ -98,22 +113,18 @@ struct ViewerToolbar: View {
 
             TBButton(systemImage: "minus.magnifyingglass", help: "Zoom Out  −") { transform.nudgeZoom(-0.1) }
                 .disabled(!library.hasPhotos)
-
             Text(zoomLabel)
                 .font(.system(size: 11.5, design: .monospaced).monospacedDigit())
                 .foregroundStyle(.secondary)
                 .frame(minWidth: 40)
                 .multilineTextAlignment(.center)
-
             TBButton(systemImage: "plus.magnifyingglass", help: "Zoom In  +") { transform.nudgeZoom(+0.1) }
                 .disabled(!library.hasPhotos)
-
             TBButton(systemImage: "arrow.up.left.and.arrow.down.right",
                      help: "Fit to Window  F",
                      active: transform.zoomMode == .fit,
                      action: { transform.setFit() })
                 .disabled(!library.hasPhotos)
-
             TBButton(systemImage: "1.square",
                      help: "Actual Size  1",
                      active: transform.zoomMode == .hundred,
@@ -127,12 +138,11 @@ struct ViewerToolbar: View {
 
             tbDivider
 
-            TBButton(systemImage: "filmstrip",
+            TBButton(systemImage: "rectangle.grid.3x1",
                      help: "Toggle Filmstrip",
                      active: preferences.filmstripOpen,
                      action: { preferences.filmstripOpen.toggle() })
                 .disabled(!library.hasPhotos)
-
             TBButton(systemImage: "info.circle",
                      help: "Info Panel  I",
                      active: infoOpen,

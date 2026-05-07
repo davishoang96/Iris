@@ -17,15 +17,13 @@ struct ContentView: View {
             state.preferences.theme.windowBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if state.preferences.toolbarVisible {
-                    ViewerToolbar(
-                        library: state.library,
-                        transform: state.transform,
-                        preferences: state.preferences,
-                        infoOpen: $state.infoOpen,
-                        slideshowActive: $state.slideshowActive
-                    )
-                }
+                ViewerToolbar(
+                    library: state.library,
+                    transform: state.transform,
+                    preferences: state.preferences,
+                    infoOpen: $state.infoOpen,
+                    slideshowActive: $state.slideshowActive
+                )
 
                 HStack(spacing: 0) {
                     mainColumn
@@ -35,6 +33,7 @@ struct ContentView: View {
                     }
                 }
             }
+            .ignoresSafeArea(.all, edges: .top)
             .focusable()
             .focusEffectDisabled()
             .focused($focused)
@@ -44,16 +43,16 @@ struct ContentView: View {
                     if state.library.folderURL == nil { state.library.openFolder() }
                 }
             }
-            .onKeyPress(.leftArrow)          { state.library.navigate(-1); return .handled }
-            .onKeyPress(.rightArrow)         { state.library.navigate(+1); return .handled }
-            .onKeyPress(KeyEquivalent("+"))  { state.transform.nudgeZoom(+0.1); return .handled }
-            .onKeyPress(KeyEquivalent("="))  { state.transform.nudgeZoom(+0.1); return .handled }
-            .onKeyPress(KeyEquivalent("-"))  { state.transform.nudgeZoom(-0.1); return .handled }
-            .onKeyPress(KeyEquivalent("f"))  { state.transform.setFit(); return .handled }
-            .onKeyPress(KeyEquivalent("F"))  { state.transform.setFit(); return .handled }
-            .onKeyPress(KeyEquivalent("1"))  { state.transform.setHundred(); return .handled }
-            .onKeyPress(KeyEquivalent("i"))  { state.infoOpen.toggle(); return .handled }
-            .onKeyPress(KeyEquivalent("I"))  { state.infoOpen.toggle(); return .handled }
+            .onKeyPress(.leftArrow)         { state.library.navigate(-1); return .handled }
+            .onKeyPress(.rightArrow)        { state.library.navigate(+1); return .handled }
+            .onKeyPress(KeyEquivalent("+")) { state.transform.nudgeZoom(+0.1); return .handled }
+            .onKeyPress(KeyEquivalent("=")) { state.transform.nudgeZoom(+0.1); return .handled }
+            .onKeyPress(KeyEquivalent("-")) { state.transform.nudgeZoom(-0.1); return .handled }
+            .onKeyPress(KeyEquivalent("f")) { state.transform.setFit(); return .handled }
+            .onKeyPress(KeyEquivalent("F")) { state.transform.setFit(); return .handled }
+            .onKeyPress(KeyEquivalent("1")) { state.transform.setHundred(); return .handled }
+            .onKeyPress(KeyEquivalent("i")) { state.infoOpen.toggle(); return .handled }
+            .onKeyPress(KeyEquivalent("I")) { state.infoOpen.toggle(); return .handled }
             .onKeyPress(.escape) {
                 if state.slideshowActive { state.slideshowActive = false; return .handled }
                 return .ignored

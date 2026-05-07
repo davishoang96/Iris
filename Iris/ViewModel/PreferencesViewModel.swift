@@ -6,9 +6,6 @@ final class PreferencesViewModel: ObservableObject {
     @Published var filmstripOpen: Bool = UserDefaults.standard.object(forKey: "filmstripOpen") as? Bool ?? true {
         didSet { UserDefaults.standard.set(filmstripOpen, forKey: "filmstripOpen") }
     }
-    @Published var toolbarVisible: Bool = UserDefaults.standard.object(forKey: "toolbarVisible") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(toolbarVisible, forKey: "toolbarVisible") }
-    }
     @Published var metaBarVisible: Bool = UserDefaults.standard.object(forKey: "metaBarVisible") as? Bool ?? true {
         didSet { UserDefaults.standard.set(metaBarVisible, forKey: "metaBarVisible") }
     }
