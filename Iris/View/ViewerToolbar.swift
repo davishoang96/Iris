@@ -77,14 +77,9 @@ struct ViewerToolbar: View {
     private var centerSection: some View {
         if let photo = library.selectedPhoto {
             VStack(spacing: 1) {
-                Text(photo.nameWithoutExtension)
+                Text(photo.name)
                     .font(.system(size: 13, weight: .semibold))
                     .tracking(-0.1)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Text(photo.name)
-                    .font(.system(size: 10.5, design: .monospaced))
-                    .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
