@@ -47,9 +47,12 @@ struct StageView: View {
 
     @State private var nsImage: NSImage?
     @State private var panOffset: CGSize = .zero
-    @State private var lastPan: CGSize = .zero
     @State private var gestureStartZoom: Double = 1.0
+    @State private var prevMagnification: Double = 1.0
+    @State private var pinchFocal: CGSize = .zero
     @State private var inPinch: Bool = false
+    @State private var showPositionLabel: Bool = false
+    @State private var positionFadeTask: Task<Void, Never>? = nil
 
     var body: some View {
         GeometryReader { geo in
@@ -63,30 +66,39 @@ struct StageView: View {
                         .controlSize(.large)
                         .tint(Color(white: 0.6))
                 }
+
             }
+            .frame(width: geo.size.width, height: geo.size.height)
             .clipped()
+            .gesture(pinchGesture(geo: geo))
+            .overlay(alignment: .bottomTrailing) {
+                if showPositionLabel, let img = nsImage {
+                    positionLabel(img: img, geo: geo)
+                }
+            }
             .background(
                 ScrollMonitor { factor, nsLoc in
-                    guard let img = nsImage else { return }
-                    let fit = fitScale(img: img, container: geo.size)
-                    let focal = CGPoint(
-                        x: nsLoc.x - geo.size.width  / 2,
-                        y: -(nsLoc.y - geo.size.height / 2)
-                    )
+                    guard nsImage != nil else { return }
+                    let fit = fitScale(img: nsImage!, container: geo.size)
                     let currentZoom: Double = switch transform.zoomMode {
                     case .fit:     1.0
                     case .hundred: 1.0 / fit
                     case .custom:  transform.zoom
                     }
+                    let oldScale = effectiveScale(fit: fit)
                     let newZoom = max(0.2, min(8.0, currentZoom * Double(factor)))
-                    let ratio = (fit * newZoom) / effectiveScale(fit: fit)
-                    panOffset = CGSize(
-                        width:  focal.x * (1 - ratio) + panOffset.width  * ratio,
-                        height: focal.y * (1 - ratio) + panOffset.height * ratio
+                    let ratio = (fit * newZoom) / oldScale
+                    let focal = CGSize(
+                        width:  nsLoc.x - geo.size.width  / 2,
+                        height: -(nsLoc.y - geo.size.height / 2)
                     )
-                    lastPan = panOffset
+                    panOffset = CGSize(
+                        width:  focal.width  * (1 - ratio) + panOffset.width  * ratio,
+                        height: focal.height * (1 - ratio) + panOffset.height * ratio
+                    )
                     transform.zoom = newZoom
                     transform.zoomMode = .custom
+                    flashPositionLabel()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             )
@@ -94,11 +106,10 @@ struct StageView: View {
         .task(id: photo.id) {
             nsImage = nil
             panOffset = .zero
-            lastPan = .zero
             nsImage = await Task.detached { ImageLoadingService.loadDisplayImage(url: photo.path) }.value
         }
         .onChange(of: transform.zoomMode) {
-            if transform.zoomMode == .fit { panOffset = .zero; lastPan = .zero }
+            if transform.zoomMode == .fit { panOffset = .zero }
         }
     }
 
@@ -116,8 +127,6 @@ struct StageView: View {
             .rotationEffect(transform.rotation)
             .offset(panOffset)
             .shadow(color: .black.opacity(0.5), radius: 40, x: 0, y: 20)
-            .gesture(panGesture())
-            .gesture(pinchGesture(fit: fit))
     }
 
     private func fitScale(img: NSImage, container: CGSize) -> Double {
@@ -135,34 +144,74 @@ struct StageView: View {
         }
     }
 
-    private func panGesture() -> some Gesture {
-        DragGesture(minimumDistance: 4)
-            .onChanged { v in
-                panOffset = CGSize(
-                    width:  lastPan.width  + v.translation.width,
-                    height: lastPan.height + v.translation.height
-                )
-            }
-            .onEnded { _ in lastPan = panOffset }
+    @ViewBuilder
+    private func positionLabel(img: NSImage, geo: GeometryProxy) -> some View {
+        let fit = fitScale(img: img, container: geo.size)
+        let scale = effectiveScale(fit: fit)
+        let pct = Int((scale * 100).rounded())
+        let dispW = Int((img.size.width  * scale).rounded())
+        let dispH = Int((img.size.height * scale).rounded())
+
+        VStack(spacing: 2) {
+            Text("\(pct)%")
+                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+            Text("\(dispW) × \(dispH) px")
+                .font(.system(size: 11, weight: .regular, design: .monospaced))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+        .padding(12)
+        .allowsHitTesting(false)
+        .transition(.opacity)
+        .animation(.easeOut(duration: 0.2), value: showPositionLabel)
     }
 
-    private func pinchGesture(fit: Double) -> some Gesture {
+    private func flashPositionLabel() {
+        showPositionLabel = true
+        positionFadeTask?.cancel()
+        positionFadeTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            if !Task.isCancelled {
+                withAnimation { showPositionLabel = false }
+            }
+        }
+    }
+
+    private func pinchGesture(geo: GeometryProxy) -> some Gesture {
         MagnifyGesture()
             .onChanged { v in
+                guard let img = nsImage else { return }
+                let fit = fitScale(img: img, container: geo.size)
                 if !inPinch {
                     inPinch = true
+                    prevMagnification = 1.0
                     gestureStartZoom = switch transform.zoomMode {
                     case .fit:     1.0
                     case .hundred: 1.0 / fit
                     case .custom:  transform.zoom
                     }
+                    // capture focal once in ZStack coords (Y-down, same as scroll wheel)
+                    pinchFocal = CGSize(
+                        width:  v.startLocation.x - geo.size.width  / 2,
+                        height: v.startLocation.y  - geo.size.height / 2
+                    )
                 }
-                transform.zoom = max(0.2, min(8.0, gestureStartZoom * v.magnification))
+                let factor = v.magnification / prevMagnification
+                prevMagnification = v.magnification
+                let currentZoom: Double = transform.zoomMode == .custom ? transform.zoom : gestureStartZoom
+                let oldScale = effectiveScale(fit: fit)
+                let newZoom = max(0.2, min(8.0, currentZoom * factor))
+                let ratio = (fit * newZoom) / oldScale
+                panOffset = CGSize(
+                    width:  pinchFocal.width  * (1 - ratio) + panOffset.width  * ratio,
+                    height: pinchFocal.height * (1 - ratio) + panOffset.height * ratio
+                )
+                transform.zoom = newZoom
                 transform.zoomMode = .custom
+                flashPositionLabel()
             }
-            .onEnded { v in
-                transform.zoom = max(0.2, min(8.0, gestureStartZoom * v.magnification))
-                inPinch = false
-            }
+            .onEnded { _ in inPinch = false }
     }
 }
