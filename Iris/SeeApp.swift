@@ -23,17 +23,39 @@ struct ViewMenuCommands: Commands {
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var appVM = AppViewModel()
+    let appVM = AppViewModel()
+    private var extraWindows: [NSWindow] = []
 
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
-        appVM.library.openFile(url)
+        if appVM.library.folderURL == nil {
+            appVM.library.openFile(url)
+        } else {
+            openNewWindow(for: url)
+        }
     }
 
-    func application(_ sender: NSApplication, openFiles filenames: [String]) {
-        guard let path = filenames.first else { return }
-        appVM.library.openFile(URL(fileURLWithPath: path))
-        sender.reply(toOpenOrPrint: .success)
+    private func openNewWindow(for url: URL) {
+        let vm = AppViewModel()
+        vm.library.openFile(url)
+
+        let controller = NSHostingController(rootView: ContentView(state: vm))
+        let window = NSWindow(contentViewController: controller)
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.setContentSize(NSSize(width: 900, height: 650))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        extraWindows.append(window)
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] note in
+            self?.extraWindows.removeAll { $0 === note.object as? NSWindow }
+        }
     }
 }
 
