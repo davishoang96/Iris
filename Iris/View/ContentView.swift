@@ -22,7 +22,8 @@ struct ContentView: View {
                     transform: state.transform,
                     preferences: state.preferences,
                     infoOpen: $state.infoOpen,
-                    slideshowActive: $state.slideshowActive
+                    slideshowActive: $state.slideshowActive,
+                    onSave: { state.save() }
                 )
 
                 HStack(spacing: 0) {
@@ -59,6 +60,14 @@ struct ContentView: View {
             }
             .focusedValue(\.appViewModel, state)
             .frame(minWidth: 700, minHeight: 500)
+            .alert("Save Failed", isPresented: Binding(
+                get: { state.saveError != nil },
+                set: { if !$0 { state.saveError = nil } }
+            )) {
+                Button("OK") { state.saveError = nil }
+            } message: {
+                Text(state.saveError ?? "")
+            }
 
             if state.slideshowActive, let photo = state.library.selectedPhoto {
                 SlideshowView(photo: photo) { state.slideshowActive = false }

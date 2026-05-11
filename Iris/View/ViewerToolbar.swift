@@ -7,6 +7,7 @@ struct ViewerToolbar: View {
     @ObservedObject var preferences: PreferencesViewModel
     @Binding var infoOpen: Bool
     @Binding var slideshowActive: Bool
+    var onSave: () -> Void = {}
 
     @State private var leadingClearance: CGFloat = 80
 
@@ -103,6 +104,8 @@ struct ViewerToolbar: View {
             TBButton(systemImage: "arrow.up.and.down.righttriangle.up.righttriangle.down",
                      help: "Flip Vertical") { transform.flipV.toggle() }
                 .disabled(!library.hasPhotos)
+            TBButton(systemImage: "square.and.arrow.down", help: "Save  ⌘S") { onSave() }
+                .disabled(!library.hasPhotos || (transform.rotation == .zero && !transform.flipH && !transform.flipV))
 
             tbDivider
 
